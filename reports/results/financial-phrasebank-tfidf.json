@@ -1,0 +1,201 @@
+{
+  "config": {
+    "data": {
+      "dataset_revision": "8d3fe0c36d5feec6b3cc5e455b0fcb4820fb9964",
+      "subset": "75Agree"
+    },
+    "evaluation": {
+      "bootstrap_samples": 1000,
+      "seed": 17
+    },
+    "experiment": {
+      "kind": "sentiment",
+      "name": "financial-phrasebank-tfidf"
+    },
+    "generation": {},
+    "model": {
+      "mode": "baseline",
+      "model_type": "tfidf-logistic"
+    },
+    "optimization": {
+      "epochs": 1
+    },
+    "output": {
+      "directory": "../../artifacts/sentiment/tfidf",
+      "result": "../../reports/results/financial-phrasebank-tfidf.json"
+    }
+  },
+  "data": {
+    "archive_member": "FinancialPhraseBank-v1.0/Sentences_75Agree.txt",
+    "archive_sha256": "0e1a06c4900fdae46091d031068601e3773ba067c7cecb5b0da1dcba5ce989a6",
+    "class_counts": {
+      "negative": 420,
+      "neutral": 2146,
+      "positive": 887
+    },
+    "examples": 3453,
+    "repository": "financial_phrasebank",
+    "revision": "8d3fe0c36d5feec6b3cc5e455b0fcb4820fb9964",
+    "split": {
+      "sha256": "f9431e8d61a365a385c865796967754eb4da00e8e05cc3bd94a1c03f53727cf2",
+      "test": {
+        "class_counts": {
+          "negative": 63,
+          "neutral": 322,
+          "positive": 133
+        },
+        "rows": 518,
+        "sha256": "1861ba36378752933f12867b540fb4c09edf25557b779771a54fbf92bed0dd57"
+      },
+      "train": {
+        "class_counts": {
+          "negative": 294,
+          "neutral": 1502,
+          "positive": 621
+        },
+        "rows": 2417,
+        "sha256": "b1d026ce7ad1a85feddee7261fd6990541b1067c9411ff69937be657f80f846d"
+      },
+      "validation": {
+        "class_counts": {
+          "negative": 63,
+          "neutral": 322,
+          "positive": 133
+        },
+        "rows": 518,
+        "sha256": "2e9fdd9fde1f1951c610ad69a8894a8662748bc4ad29adffe7a8f44fa0a2d562"
+      }
+    },
+    "subset": "75Agree",
+    "unique_sentence_groups": 3448
+  },
+  "environment": {
+    "cuda": null,
+    "cuda_available": false,
+    "device": "cpu",
+    "packages": {
+      "joblib": "1.5.3",
+      "numpy": "2.5.2",
+      "scikit-learn": "1.9.0",
+      "torch": "2.13.0",
+      "transformers": "4.57.6"
+    },
+    "platform": "Windows",
+    "python": "3.12.14",
+    "torch": "2.13.0+cpu"
+  },
+  "error": null,
+  "memory": {},
+  "metrics": {
+    "test": {
+      "accuracy": 0.8532818532818532,
+      "confusion_matrix": [
+        [
+          41,
+          13,
+          9
+        ],
+        [
+          1,
+          306,
+          15
+        ],
+        [
+          6,
+          32,
+          95
+        ]
+      ],
+      "macro_f1": 0.8006893541811818,
+      "macro_f1_bootstrap_ci": {
+        "lower": 0.7547137985807687,
+        "upper": 0.8413977539338898
+      },
+      "per_class": {
+        "negative": {
+          "f1": 0.7387387387387387,
+          "precision": 0.8541666666666666,
+          "recall": 0.6507936507936508,
+          "support": 63
+        },
+        "neutral": {
+          "f1": 0.9093610698365527,
+          "precision": 0.8717948717948718,
+          "recall": 0.9503105590062112,
+          "support": 322
+        },
+        "positive": {
+          "f1": 0.753968253968254,
+          "precision": 0.7983193277310925,
+          "recall": 0.7142857142857143,
+          "support": 133
+        }
+      },
+      "probabilities_recorded": false
+    },
+    "validation": {
+      "accuracy": 0.8359073359073359,
+      "confusion_matrix": [
+        [
+          45,
+          10,
+          8
+        ],
+        [
+          7,
+          298,
+          17
+        ],
+        [
+          9,
+          34,
+          90
+        ]
+      ],
+      "macro_f1": 0.7830677548905299,
+      "macro_f1_bootstrap_ci": {
+        "lower": 0.7362708868524397,
+        "upper": 0.8254964121955106
+      },
+      "per_class": {
+        "negative": {
+          "f1": 0.7258064516129032,
+          "precision": 0.7377049180327869,
+          "recall": 0.7142857142857143,
+          "support": 63
+        },
+        "neutral": {
+          "f1": 0.8975903614457831,
+          "precision": 0.8713450292397661,
+          "recall": 0.9254658385093167,
+          "support": 322
+        },
+        "positive": {
+          "f1": 0.7258064516129032,
+          "precision": 0.782608695652174,
+          "recall": 0.6766917293233082,
+          "support": 133
+        }
+      },
+      "probabilities_recorded": false
+    }
+  },
+  "model": {
+    "type": "tfidf-logistic",
+    "vectorizer": "word-1-2gram"
+  },
+  "optimization": {},
+  "parameters": {
+    "total": 23973,
+    "trainable": 23973,
+    "trainable_share": 1.0
+  },
+  "run_id": "financial-phrasebank-tfidf",
+  "schema_version": 1,
+  "status": "completed",
+  "timestamp_utc": "2026-09-12T13:27:59.078248Z",
+  "timing": {
+    "examples_per_second": 6039.753422179225,
+    "train_seconds": 0.40018189999682363
+  }
+}

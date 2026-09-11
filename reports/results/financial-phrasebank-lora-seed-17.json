@@ -1,0 +1,380 @@
+{
+  "config": {
+    "data": {
+      "dataset_revision": "8d3fe0c36d5feec6b3cc5e455b0fcb4820fb9964",
+      "max_length": 64,
+      "subset": "75Agree"
+    },
+    "evaluation": {
+      "bootstrap_samples": 1000,
+      "seed": 17
+    },
+    "experiment": {
+      "kind": "sentiment",
+      "name": "financial-phrasebank-lora"
+    },
+    "generation": {},
+    "model": {
+      "base_model": "openai-community/gpt2",
+      "lora_alpha": 8.0,
+      "lora_dropout": 0.0,
+      "lora_rank": 4,
+      "mode": "lora",
+      "model_revision": "607a30d783dfa663caf39e06633721c8d4cfcd7e",
+      "num_labels": 3,
+      "target_modules": [
+        "attention.c_attn",
+        "attention.c_proj"
+      ]
+    },
+    "optimization": {
+      "amp": true,
+      "batch_size": 1,
+      "epochs": 3,
+      "gradient_accumulation_steps": 16,
+      "learning_rate": 5e-05,
+      "max_grad_norm": 1.0,
+      "weight_decay": 0.01
+    },
+    "output": {
+      "directory": "../../artifacts/sentiment/lora",
+      "result": "../../reports/results/financial-phrasebank-lora-seed-17.json"
+    }
+  },
+  "data": {
+    "archive_member": "FinancialPhraseBank-v1.0/Sentences_75Agree.txt",
+    "archive_sha256": "0e1a06c4900fdae46091d031068601e3773ba067c7cecb5b0da1dcba5ce989a6",
+    "class_counts": {
+      "negative": 420,
+      "neutral": 2146,
+      "positive": 887
+    },
+    "examples": 3453,
+    "repository": "financial_phrasebank",
+    "revision": "8d3fe0c36d5feec6b3cc5e455b0fcb4820fb9964",
+    "split": {
+      "sha256": "f9431e8d61a365a385c865796967754eb4da00e8e05cc3bd94a1c03f53727cf2",
+      "test": {
+        "class_counts": {
+          "negative": 63,
+          "neutral": 322,
+          "positive": 133
+        },
+        "rows": 518,
+        "sha256": "1861ba36378752933f12867b540fb4c09edf25557b779771a54fbf92bed0dd57"
+      },
+      "train": {
+        "class_counts": {
+          "negative": 294,
+          "neutral": 1502,
+          "positive": 621
+        },
+        "rows": 2417,
+        "sha256": "b1d026ce7ad1a85feddee7261fd6990541b1067c9411ff69937be657f80f846d"
+      },
+      "validation": {
+        "class_counts": {
+          "negative": 63,
+          "neutral": 322,
+          "positive": 133
+        },
+        "rows": 518,
+        "sha256": "2e9fdd9fde1f1951c610ad69a8894a8662748bc4ad29adffe7a8f44fa0a2d562"
+      }
+    },
+    "unique_sentence_groups": 3448
+  },
+  "environment": {
+    "cuda": "12.8",
+    "cuda_available": true,
+    "device": "cuda",
+    "gpu": "NVIDIA GeForce GTX 1650",
+    "gpu_memory_bytes": 4294639616,
+    "packages": {
+      "joblib": "1.5.3",
+      "numpy": "2.5.2",
+      "scikit-learn": "1.9.0",
+      "torch": "2.9.0+cu128",
+      "transformers": "4.57.6"
+    },
+    "platform": "Windows",
+    "python": "3.12.10",
+    "torch": "2.9.0+cu128"
+  },
+  "error": null,
+  "memory": {
+    "peak_cuda_allocated_bytes": 1032679936,
+    "peak_cuda_reserved_bytes": 1147142144
+  },
+  "metrics": {
+    "best_epoch": 3,
+    "test": {
+      "accuracy": 0.803088803088803,
+      "confusion_matrix": [
+        [
+          35,
+          11,
+          17
+        ],
+        [
+          0,
+          310,
+          12
+        ],
+        [
+          9,
+          53,
+          71
+        ]
+      ],
+      "macro_f1": 0.718150755087874,
+      "macro_f1_bootstrap_ci": {
+        "lower": 0.6665607184433946,
+        "upper": 0.7659999026245109
+      },
+      "per_class": {
+        "0": {
+          "f1": 0.6542056074766355,
+          "precision": 0.7954545454545454,
+          "recall": 0.5555555555555556,
+          "support": 63
+        },
+        "1": {
+          "f1": 0.8908045977011494,
+          "precision": 0.8288770053475936,
+          "recall": 0.9627329192546584,
+          "support": 322
+        },
+        "2": {
+          "f1": 0.6094420600858369,
+          "precision": 0.71,
+          "recall": 0.5338345864661654,
+          "support": 133
+        }
+      },
+      "probabilities_recorded": true
+    },
+    "validation": {
+      "accuracy": 0.8243243243243243,
+      "confusion_matrix": [
+        [
+          38,
+          11,
+          14
+        ],
+        [
+          1,
+          312,
+          9
+        ],
+        [
+          10,
+          46,
+          77
+        ]
+      ],
+      "macro_f1": 0.7475182361286968,
+      "macro_f1_bootstrap_ci": {
+        "lower": 0.7025917097478993,
+        "upper": 0.7833762302623445
+      },
+      "per_class": {
+        "0": {
+          "f1": 0.6785714285714286,
+          "precision": 0.7755102040816326,
+          "recall": 0.6031746031746031,
+          "support": 63
+        },
+        "1": {
+          "f1": 0.9030390738060782,
+          "precision": 0.8455284552845529,
+          "recall": 0.968944099378882,
+          "support": 322
+        },
+        "2": {
+          "f1": 0.6609442060085837,
+          "precision": 0.77,
+          "recall": 0.5789473684210527,
+          "support": 133
+        }
+      },
+      "probabilities_recorded": true
+    },
+    "validation_candidates": [
+      {
+        "epoch": 1,
+        "metrics": {
+          "accuracy": 0.6254826254826255,
+          "confusion_matrix": [
+            [
+              0,
+              55,
+              8
+            ],
+            [
+              2,
+              309,
+              11
+            ],
+            [
+              0,
+              118,
+              15
+            ]
+          ],
+          "macro_f1": 0.31609914499359487,
+          "macro_f1_bootstrap_ci": {
+            "lower": 0.28399334084084144,
+            "upper": 0.36081935469894943
+          },
+          "per_class": {
+            "0": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0,
+              "support": 63
+            },
+            "1": {
+              "f1": 0.7686567164179104,
+              "precision": 0.6410788381742739,
+              "recall": 0.9596273291925466,
+              "support": 322
+            },
+            "2": {
+              "f1": 0.17964071856287425,
+              "precision": 0.4411764705882353,
+              "recall": 0.11278195488721804,
+              "support": 133
+            }
+          },
+          "probabilities_recorded": true
+        }
+      },
+      {
+        "epoch": 2,
+        "metrics": {
+          "accuracy": 0.7277992277992278,
+          "confusion_matrix": [
+            [
+              25,
+              18,
+              20
+            ],
+            [
+              1,
+              303,
+              18
+            ],
+            [
+              18,
+              66,
+              49
+            ]
+          ],
+          "macro_f1": 0.5891564099399277,
+          "macro_f1_bootstrap_ci": {
+            "lower": 0.5426539961492824,
+            "upper": 0.6353935075179357
+          },
+          "per_class": {
+            "0": {
+              "f1": 0.4672897196261682,
+              "precision": 0.5681818181818182,
+              "recall": 0.3968253968253968,
+              "support": 63
+            },
+            "1": {
+              "f1": 0.8547249647390691,
+              "precision": 0.7829457364341085,
+              "recall": 0.9409937888198758,
+              "support": 322
+            },
+            "2": {
+              "f1": 0.44545454545454544,
+              "precision": 0.5632183908045977,
+              "recall": 0.3684210526315789,
+              "support": 133
+            }
+          },
+          "probabilities_recorded": true
+        }
+      },
+      {
+        "epoch": 3,
+        "metrics": {
+          "accuracy": 0.8243243243243243,
+          "confusion_matrix": [
+            [
+              38,
+              11,
+              14
+            ],
+            [
+              1,
+              312,
+              9
+            ],
+            [
+              10,
+              46,
+              77
+            ]
+          ],
+          "macro_f1": 0.7475182361286968,
+          "macro_f1_bootstrap_ci": {
+            "lower": 0.7025917097478993,
+            "upper": 0.7833762302623445
+          },
+          "per_class": {
+            "0": {
+              "f1": 0.6785714285714286,
+              "precision": 0.7755102040816326,
+              "recall": 0.6031746031746031,
+              "support": 63
+            },
+            "1": {
+              "f1": 0.9030390738060782,
+              "precision": 0.8455284552845529,
+              "recall": 0.968944099378882,
+              "support": 322
+            },
+            "2": {
+              "f1": 0.6609442060085837,
+              "precision": 0.77,
+              "recall": 0.5789473684210527,
+              "support": 133
+            }
+          },
+          "probabilities_recorded": true
+        }
+      }
+    ]
+  },
+  "model": {
+    "id": "openai-community/gpt2",
+    "mode": "lora",
+    "revision": "607a30d783dfa663caf39e06633721c8d4cfcd7e"
+  },
+  "optimization": {
+    "amp": true,
+    "batch_size": 1,
+    "epochs": 3,
+    "gradient_accumulation_steps": 16,
+    "learning_rate": 5e-05,
+    "max_grad_norm": 1.0,
+    "weight_decay": 0.01
+  },
+  "parameters": {
+    "total": 124663299,
+    "trainable": 223491,
+    "trainable_share": 0.001792756984555655
+  },
+  "run_id": "financial-phrasebank-lora",
+  "schema_version": 1,
+  "status": "completed",
+  "timestamp_utc": "2026-09-12T13:45:57.071468Z",
+  "timing": {
+    "examples_per_second": 7.311930150891361,
+    "train_seconds": 991.6670222999965
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "config": {
+    "data": {},
+    "evaluation": {
+      "seed": 17
+    },
+    "experiment": {
+      "kind": "gpt2-parity",
+      "name": "gpt2-small-parity"
+    },
+    "generation": {},
+    "model": {
+      "base_model": "openai-community/gpt2",
+      "model_revision": "607a30d783dfa663caf39e06633721c8d4cfcd7e",
+      "prompts": [
+        "Hello",
+        "The market opened",
+        "Revenue rose 12.4% in 2024.",
+        "Caf\u00e9 prices changed.",
+        "The board met on Monday. The discussion continued after lunch."
+      ],
+      "tolerance": 0.0002
+    },
+    "optimization": {},
+    "output": {
+      "directory": "../../checkpoints/gpt2-small",
+      "result": "../../reports/results/gpt2-parity.json"
+    }
+  },
+  "data": {
+    "prompt_count": 5,
+    "seed": 17
+  },
+  "environment": {
+    "cuda": null,
+    "cuda_available": false,
+    "device": "cpu",
+    "packages": {
+      "joblib": "1.5.3",
+      "numpy": "2.5.2",
+      "scikit-learn": "1.9.0",
+      "torch": "2.13.0",
+      "transformers": "4.57.6"
+    },
+    "platform": "Windows",
+    "python": "3.12.14",
+    "torch": "2.13.0+cpu"
+  },
+  "error": null,
+  "memory": {},
+  "metrics": {
+    "max_absolute_error": 0.0001125335693359375,
+    "mean_absolute_error": 2.9186300162109545e-05,
+    "next_token_agreement": 1.0,
+    "prompts": [
+      {
+        "max_absolute_error": 9.5367431640625e-05,
+        "mean_absolute_error": 6.940506864339113e-05,
+        "next_token_agreement": true,
+        "prompt": "Hello",
+        "tokens": 1
+      },
+      {
+        "max_absolute_error": 7.62939453125e-05,
+        "mean_absolute_error": 2.1838864995515905e-05,
+        "next_token_agreement": true,
+        "prompt": "The market opened",
+        "tokens": 3
+      },
+      {
+        "max_absolute_error": 0.0001125335693359375,
+        "mean_absolute_error": 2.4079961804091e-05,
+        "next_token_agreement": true,
+        "prompt": "Revenue rose 12.4% in 2024.",
+        "tokens": 10
+      },
+      {
+        "max_absolute_error": 7.62939453125e-05,
+        "mean_absolute_error": 1.551481182104908e-05,
+        "next_token_agreement": true,
+        "prompt": "Caf\u00e9 prices changed.",
+        "tokens": 6
+      },
+      {
+        "max_absolute_error": 0.0001068115234375,
+        "mean_absolute_error": 1.5092793546500616e-05,
+        "next_token_agreement": true,
+        "prompt": "The board met on Monday. The discussion continued after lunch.",
+        "tokens": 12
+      }
+    ],
+    "tolerance": 0.0002
+  },
+  "model": {
+    "id": "openai-community/gpt2",
+    "loader_tensors": 148,
+    "revision": "607a30d783dfa663caf39e06633721c8d4cfcd7e",
+    "tokenizer_id": "openai-community/gpt2",
+    "tokenizer_revision": "607a30d783dfa663caf39e06633721c8d4cfcd7e"
+  },
+  "optimization": {},
+  "parameters": {},
+  "run_id": "gpt2-small-parity",
+  "schema_version": 1,
+  "status": "completed",
+  "timestamp_utc": "2026-09-12T14:07:20.162697Z",
+  "timing": {
+    "seconds": 0.8346931999985827
+  }
+}

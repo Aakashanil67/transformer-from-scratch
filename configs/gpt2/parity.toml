@@ -1,0 +1,22 @@
+[experiment]
+name = "gpt2-small-parity"
+kind = "gpt2-parity"
+
+[model]
+base_model = "openai-community/gpt2"
+model_revision = "607a30d783dfa663caf39e06633721c8d4cfcd7e"
+tolerance = 0.0002
+prompts = [
+    "Hello",
+    "The market opened",
+    "Revenue rose 12.4% in 2024.",
+    "Café prices changed.",
+    "The board met on Monday. The discussion continued after lunch.",
+]
+
+[evaluation]
+seed = 17
+
+[output]
+result = "../../reports/results/gpt2-parity.json"
+directory = "../../checkpoints/gpt2-small"

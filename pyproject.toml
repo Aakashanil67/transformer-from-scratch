@@ -1,0 +1,91 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "transformer-from-scratch"
+version = "0.1.0"
+description = "A decoder-only transformer and LoRA experiment implemented in PyTorch."
+requires-python = ">=3.11,<3.13"
+readme = "README.md"
+license = "MIT"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Education",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "numpy>=2.0,<3",
+    "torch>=2.6,<2.14",
+]
+
+[project.scripts]
+transformer-lab = "transformer_lab.cli:main"
+
+[project.optional-dependencies]
+core = [
+]
+dev = [
+    "pytest>=8.3,<9",
+    "ruff>=0.9,<1",
+    "build>=1.2,<2",
+    "pytest-cov>=6,<7",
+]
+experiments = [
+    "datasets>=3.0,<5",
+    "huggingface-hub>=0.27,<1",
+    "matplotlib>=3.9,<4",
+    "scikit-learn>=1.5,<2",
+    "tiktoken>=0.8,<1",
+    "transformers>=4.50,<6",
+    "joblib>=1.4,<2",
+]
+app = [
+    "streamlit>=1.40,<2",
+    "joblib>=1.4,<2",
+]
+all = [
+    "build>=1.2,<2",
+    "datasets>=3.0,<5",
+    "huggingface-hub>=0.27,<1",
+    "joblib>=1.4,<2",
+    "matplotlib>=3.9,<4",
+    "pytest>=8.3,<9",
+    "pytest-cov>=6,<7",
+    "ruff>=0.9,<1",
+    "scikit-learn>=1.5,<2",
+    "streamlit>=1.40,<2",
+    "tiktoken>=0.8,<1",
+    "transformers>=4.50,<6",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra -p no:cacheprovider --basetemp=.pytest-temp-current -m 'not integration'"
+markers = [
+    "integration: exercises file or model boundaries that do not belong in the fast suite",
+]
+filterwarnings = [
+    "ignore:Setting the shape on a NumPy array has been deprecated:DeprecationWarning:joblib.numpy_pickle",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.coverage.run]
+source = ["transformer_lab"]
+
+[tool.coverage.report]
+exclude_also = [
+    "if __name__ == .__main__.:",
+]

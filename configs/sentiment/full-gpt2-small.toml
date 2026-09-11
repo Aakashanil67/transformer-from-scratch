@@ -1,0 +1,31 @@
+[experiment]
+name = "financial-phrasebank-full"
+kind = "sentiment"
+
+[model]
+base_model = "openai-community/gpt2"
+model_revision = "607a30d783dfa663caf39e06633721c8d4cfcd7e"
+mode = "full"
+num_labels = 3
+
+[data]
+dataset_revision = "8d3fe0c36d5feec6b3cc5e455b0fcb4820fb9964"
+subset = "75Agree"
+max_length = 64
+
+[optimization]
+epochs = 3
+batch_size = 1
+learning_rate = 0.00001
+weight_decay = 0.01
+gradient_accumulation_steps = 16
+max_grad_norm = 1.0
+amp = true
+
+[evaluation]
+bootstrap_samples = 1000
+seed = 17
+
+[output]
+directory = "../../artifacts/sentiment/full"
+result = "../../reports/results/financial-phrasebank-full-seed-17.json"

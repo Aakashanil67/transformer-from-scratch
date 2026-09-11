@@ -1,0 +1,51 @@
+Profit rises after a new contract@positive
+Profit rises after a new contract@positive
+The company reports a loss@negative
+The company reports a loss@negative
+The board met on Tuesday@neutral
+Cash flow remains stable@neutral
+*** Add File: tests/unit/test_financial_phrasebank.py
+import pytest
+
+from transformer_lab.data.financial_phrasebank import (
+    parse_phrasebank_lines,
+    split_manifest,
+    split_phrasebank,
+)
+
+
+def test_parser_preserves_text_and_groups_exact_duplicates() -> None:
+    examples = parse_phrasebank_lines(
+        ["Café sales rise@positive", "Café sales rise@positive", "Costs hold@neutral"]
+    )
+
+    assert examples[0].text == "Café sales rise"
+    assert examples[0].group_id == examples[1].group_id
+
+
+def test_parser_rejects_conflicting_duplicate_labels() -> None:
+    with pytest.raises(ValueError, match="conflicting labels"):
+        parse_phrasebank_lines(["Same sentence@positive", "Same sentence@negative"])
+
+
+def test_split_keeps_duplicate_groups_in_one_partition() -> None:
+    examples = parse_phrasebank_lines(
+        [
+            "A@positive",
+            "A@positive",
+            "B@positive",
+            "C@negative",
+            "D@negative",
+            "E@neutral",
+            "F@neutral",
+        ]
+    )
+
+    splits = split_phrasebank(examples, seed=17)
+    membership = {}
+    for name, partition in (("train", splits.train), ("validation", splits.validation), ("test", splits.test)):
+        for example in partition:
+            membership.setdefault(example.group_id, set()).add(name)
+
+    assert all(len(partitions) == 1 for partitions in membership.values())
+    assert set(split_manifest(splits)) == {"train", "validation", "test"}

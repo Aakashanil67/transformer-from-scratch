@@ -1,0 +1,19 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -c requirements/constraints-cpu.txt -e '.[all]'
+      - run: python -m ruff format --check src tests scripts app
+      - run: python -m ruff check src tests scripts app
+      - run: python -m pytest --cov=transformer_lab --cov-report=term-missing --cov-fail-under=85

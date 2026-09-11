@@ -1,0 +1,33 @@
+[experiment]
+name = "tiny-shakespeare-bigram"
+kind = "lm"
+
+[model]
+model_type = "bigram"
+vocab_size = 256
+
+[data]
+train = "../../data/prepared/tiny_shakespeare/train.txt"
+validation = "../../data/prepared/tiny_shakespeare/validation.txt"
+test = "../../data/prepared/tiny_shakespeare/test.txt"
+
+[optimization]
+steps = 100
+batch_size = 32
+block_size = 8
+learning_rate = 0.1
+eval_interval = 25
+eval_batches = 4
+
+[output]
+directory = "../../artifacts/lm/tiny-shakespeare"
+checkpoint = "../../checkpoints/tiny-shakespeare-bigram.pt"
+result = "../../reports/results/tiny-shakespeare-bigram.json"
+
+[generation]
+prompt = "To be"
+max_new_tokens = 80
+temperature = 0.8
+top_k = 40
+do_sample = true
+seed = 17

@@ -1,0 +1,22 @@
+[experiment]
+name = "financial-phrasebank-tfidf"
+kind = "sentiment"
+
+[model]
+model_type = "tfidf-logistic"
+mode = "baseline"
+
+[data]
+dataset_revision = "8d3fe0c36d5feec6b3cc5e455b0fcb4820fb9964"
+subset = "75Agree"
+
+[optimization]
+epochs = 1
+
+[evaluation]
+bootstrap_samples = 1000
+seed = 17
+
+[output]
+directory = "../../artifacts/sentiment/tfidf"
+result = "../../reports/results/financial-phrasebank-tfidf.json"
