@@ -27,6 +27,18 @@ def test_decoder_only_transformer_returns_logits_loss_and_tied_embeddings() -> N
     assert model.token_embedding.weight.data_ptr() == model.lm_head.weight.data_ptr()
 
 
+def test_layer_states_expose_each_parity_boundary() -> None:
+    model = DecoderOnlyTransformer(build_config()).eval()
+    token_ids = torch.tensor([[1, 2, 3]])
+
+    states = model.layer_states(token_ids)
+
+    assert len(states) == 3
+    assert all(state.shape == (1, 3, 8) for state in states)
+    assert torch.equal(model.hidden_states(token_ids), states[-1])
+    assert torch.equal(states[1], model.blocks[0](states[0]))
+
+
 def test_decoder_only_transformer_rejects_sequences_longer_than_its_context() -> None:
     model = DecoderOnlyTransformer(build_config())
 

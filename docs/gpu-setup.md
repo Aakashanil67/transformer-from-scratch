@@ -36,6 +36,12 @@ Start with the supplied LoRA configuration. It uses GPT-2 small, sequence length
 .venv-gpu\Scripts\transformer-lab.exe train-sentiment --config configs\sentiment\lora-gpt2-small.toml --device cuda
 ```
 
-The supplied full-fine-tuning profile fitted this card. Its peak was 2.01 GB allocated and 2.17 GB reserved memory. Available memory varies with other applications, so close GPU-heavy programs before reproducing it. If a run fails, retain the failed record rather than changing the comparison in place.
+The supplied full-fine-tuning profile fitted this card. The recorded three-seed matrix peaked at 3.28 GB allocated on the full-tuning profile; available memory varies with other applications, so close GPU-heavy programs before reproducing it. If a run fails, retain the failed record rather than changing the comparison in place.
+
+To reproduce the reported comparison, use the installed matrix command. It keeps the split seed at 17, varies optimisation seeds 17, 23 and 41, and writes the paired comparison summary:
+
+```powershell
+.venv-gpu\Scripts\transformer-lab.exe run-sentiment-matrix --config configs\sentiment\baseline.toml --config configs\sentiment\head-only-gpt2-small.toml --config configs\sentiment\lora-gpt2-small.toml --config configs\sentiment\full-gpt2-small.toml --seeds 17 23 41 --device cuda --output reports\results\financial-phrasebank-comparison.json --resume
+```
 
 The raw dataset and model checkpoints remain outside Git. Tracked result files contain the revision, split hashes, configuration, elapsed time, memory, metrics, and failure reason where applicable.

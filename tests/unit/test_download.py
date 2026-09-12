@@ -1,3 +1,4 @@
+import hashlib
 from pathlib import Path
 
 import pytest
@@ -29,3 +30,16 @@ def test_download_file_rejects_a_hash_mismatch_without_replacing_destination(
 
     assert destination.read_text(encoding="utf-8") == "known good corpus"
     assert not destination.with_suffix(".txt.part").exists()
+
+
+def test_download_file_reuses_an_existing_verified_destination(tmp_path: Path) -> None:
+    destination = tmp_path / "download.txt"
+    destination.write_text("known corpus", encoding="utf-8")
+    expected = hashlib.sha256(destination.read_bytes()).hexdigest()
+
+    downloaded = download_file(
+        "https://invalid.example/corpus.txt", destination, expected_sha256=expected
+    )
+
+    assert downloaded == destination
+    assert destination.read_text(encoding="utf-8") == "known corpus"

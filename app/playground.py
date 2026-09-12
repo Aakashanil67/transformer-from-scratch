@@ -17,12 +17,16 @@ from transformer_lab.inference.sentiment import (
 
 ROOT = Path(__file__).resolve().parents[1]
 GENERATION_ARTIFACT = ROOT / "checkpoints" / "gpt2-small"
-LORA_CHECKPOINT = ROOT / "artifacts" / "sentiment" / "lora" / "model.pt"
+LORA_CHECKPOINTS = (
+    ROOT / "artifacts" / "sentiment" / "lora-seed-17" / "model.pt",
+    ROOT / "artifacts" / "sentiment" / "lora" / "model.pt",
+)
 TFIDF_CHECKPOINT = ROOT / "artifacts" / "sentiment" / "tfidf" / "model.joblib"
 TOKENIZER_DIRECTORY = GENERATION_ARTIFACT / "tokenizer"
 PARITY_RESULT = ROOT / "reports" / "results" / "gpt2-parity.json"
 LORA_RESULT = ROOT / "reports" / "results" / "financial-phrasebank-lora-seed-17.json"
 TFIDF_RESULT = ROOT / "reports" / "results" / "financial-phrasebank-tfidf.json"
+COMPARISON_RESULT = ROOT / "reports" / "results" / "financial-phrasebank-comparison.json"
 
 
 @st.cache_resource
@@ -65,6 +69,11 @@ def _completed_test_metrics(record: dict) -> dict | None:
     if not isinstance(metrics, dict) or not isinstance(metrics.get("test"), dict):
         return None
     return metrics["test"]
+
+
+def _first_existing(paths: tuple[Path, ...]) -> Path:
+    """Use the matrix artefact when present, with a direct-run fallback."""
+    return next((path for path in paths if path.exists()), paths[0])
 
 
 st.set_page_config(page_title="Transformer lab", layout="centered")
@@ -128,8 +137,9 @@ with tab_sentiment:
     method = st.selectbox("Method", options=("LoRA GPT-2", "TF-IDF reference"))
     transformer_method = method == "LoRA GPT-2"
     result_path = LORA_RESULT if transformer_method else TFIDF_RESULT
-    checkpoint_path = LORA_CHECKPOINT if transformer_method else TFIDF_CHECKPOINT
+    checkpoint_path = _first_existing(LORA_CHECKPOINTS) if transformer_method else TFIDF_CHECKPOINT
     sentiment_record = _result(result_path)
+    comparison_record = _result(COMPARISON_RESULT)
     test_metrics = _completed_test_metrics(sentiment_record)
     if test_metrics is not None:
         model_label = (
@@ -142,6 +152,14 @@ with tab_sentiment:
             f"test macro-F1 {test_metrics['macro_f1']:.4f}, "
             f"accuracy {test_metrics['accuracy']:.4f}."
         )
+        if transformer_method:
+            methods = comparison_record.get("metrics", {}).get("methods", {})
+            summary = methods.get("lora") if isinstance(methods, dict) else None
+            if isinstance(summary, dict):
+                mean = summary.get("macro_f1", {}).get("mean")
+                deviation = summary.get("macro_f1", {}).get("standard_deviation")
+                if isinstance(mean, float) and isinstance(deviation, float):
+                    st.caption(f"Three-seed macro-F1 {mean:.4f} ± {deviation:.4f}.")
         parameters = sentiment_record.get("parameters", {})
         if transformer_method and isinstance(parameters, dict):
             trainable = parameters.get("trainable")
@@ -187,5 +205,5 @@ with tab_sentiment:
                 st.error(str(error))
             else:
                 st.write(f"Prediction: **{result['label']}**")
-                st.write(f"Confidence: {result['confidence']:.1%}")
+                st.write(f"Top-class probability: {result['top_class_probability']:.1%}")
                 st.bar_chart(result["probabilities"])

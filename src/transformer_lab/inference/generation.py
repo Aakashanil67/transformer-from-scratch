@@ -54,10 +54,21 @@ def load_local_generator(artifact_dir: Path, device: torch.device) -> LocalGener
     if not tokenizer_dir.exists():
         raise FileNotFoundError("local generation tokenizer is missing")
     payload = torch.load(model_path, map_location="cpu", weights_only=True)
+    if not isinstance(payload, dict):
+        raise ValueError("local generation artifact is incomplete: expected a mapping")
     if payload.get("schema_version") != 1:
         raise ValueError("unsupported local generation artifact schema")
-    model = DecoderOnlyTransformer(GPTConfig(**payload["architecture"]))
-    model.load_state_dict(payload["state_dict"])
+    missing = {"architecture", "state_dict"} - payload.keys()
+    if missing:
+        names = ", ".join(sorted(missing))
+        raise ValueError(f"local generation artifact is incomplete: missing {names}")
+    try:
+        model = DecoderOnlyTransformer(GPTConfig(**payload["architecture"]))
+        model.load_state_dict(payload["state_dict"])
+    except (KeyError, TypeError, ValueError, RuntimeError) as error:
+        raise ValueError(
+            "local generation artifact is incompatible with the model schema"
+        ) from error
     model.to(device).eval()
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_dir, local_files_only=True)
     return LocalGenerator(model=model, tokenizer=tokenizer, device=device)

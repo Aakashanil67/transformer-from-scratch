@@ -7,13 +7,15 @@ from torch.utils.data import DataLoader, TensorDataset
 import transformer_lab.experiments.sentiment as sentiment_module
 from transformer_lab.config import GPTConfig
 from transformer_lab.config_io import ExperimentConfig
-from transformer_lab.evaluation.classification import classification_metrics
+from transformer_lab.evaluation.classification import apply_temperature, classification_metrics
 from transformer_lab.experiments.sentiment import (
     _encode,
+    _metrics_match,
     _predict,
     _train_transformer,
     evaluate_sentiment_run,
     run_sentiment_experiment,
+    sentiment_seeds,
 )
 from transformer_lab.models.sentiment import SentimentClassifier
 
@@ -70,11 +72,12 @@ def test_sentiment_helpers_train_and_predict_on_a_tiny_batch() -> None:
         max_grad_norm=1,
         amp=False,
     )
-    targets, predictions, probabilities = _predict(model, loader, torch.device("cpu"))
+    targets, predictions, probabilities, logits = _predict(model, loader, torch.device("cpu"))
 
     assert len(result["losses"]) == 1
     assert targets.shape == predictions.shape == (2,)
     assert probabilities.shape == (2, 3)
+    assert logits.shape == (2, 3)
 
 
 def test_incomplete_accumulation_window_uses_its_actual_batch_count() -> None:
@@ -224,7 +227,8 @@ def test_evaluate_sentiment_run_replays_a_transformer_checkpoint(tmp_path: Path)
     masks = torch.tensor([[1, 1, 0, 0], [1, 1, 1, 0], [1, 1, 1, 1]])
     targets = torch.tensor([0, 1, 2])
     loader = DataLoader(TensorDataset(input_ids, masks, targets), batch_size=2)
-    actual_targets, predictions, probabilities = _predict(model, loader, torch.device("cpu"))
+    actual_targets, predictions, _, logits = _predict(model, loader, torch.device("cpu"))
+    probabilities = apply_temperature(logits, 1.0)
     metrics = classification_metrics(
         actual_targets,
         predictions,
@@ -263,3 +267,92 @@ def test_evaluate_sentiment_run_replays_a_transformer_checkpoint(tmp_path: Path)
     )
 
     assert evaluate_sentiment_run(config, torch.device("cpu")) == result_path
+
+
+def test_evaluate_sentiment_run_resolves_seeded_artifact_directory(tmp_path: Path) -> None:
+    architecture = {
+        "vocab_size": 16,
+        "block_size": 4,
+        "n_layer": 1,
+        "n_head": 2,
+        "n_embd": 8,
+        "dropout": 0.0,
+        "bias": True,
+    }
+    configured_dir = tmp_path / "model"
+    seeded_dir = tmp_path / "model-seed-17"
+    seeded_dir.mkdir()
+    model = SentimentClassifier(GPTConfig(**architecture), num_labels=3).eval()
+    input_ids = torch.tensor([[1, 2, 0, 0], [3, 4, 5, 0], [6, 7, 8, 9]])
+    masks = torch.tensor([[1, 1, 0, 0], [1, 1, 1, 0], [1, 1, 1, 1]])
+    targets = torch.tensor([0, 1, 2])
+    loader = DataLoader(TensorDataset(input_ids, masks, targets), batch_size=2)
+    actual_targets, predictions, _, logits = _predict(model, loader, torch.device("cpu"))
+    probabilities = apply_temperature(logits, 1.0)
+    metrics = classification_metrics(
+        actual_targets,
+        predictions,
+        labels=[0, 1, 2],
+        probabilities=probabilities,
+        bootstrap_samples=5,
+        seed=17,
+    )
+    torch.save(
+        {
+            "state_dict": model.state_dict(),
+            "architecture": architecture,
+            "mode": "head_only",
+            "num_labels": 3,
+        },
+        seeded_dir / "model.pt",
+    )
+    torch.save(
+        {"input_ids": input_ids, "attention_mask": masks, "targets": targets},
+        seeded_dir / "evaluation.pt",
+    )
+    result_path = tmp_path / "result-seed-17.json"
+    result_path.write_text(
+        json.dumps({"status": "completed", "metrics": {"test": metrics}}),
+        encoding="utf-8",
+    )
+    config = ExperimentConfig(
+        experiment={"name": "complete", "kind": "sentiment"},
+        model={"mode": "head_only"},
+        data={},
+        optimization={},
+        evaluation={"seed": 17, "bootstrap_samples": 5},
+        output={"result": str(result_path), "directory": str(configured_dir)},
+        generation={},
+        source_path=tmp_path / "config.toml",
+    )
+
+    assert evaluate_sentiment_run(config, torch.device("cpu")) == result_path
+
+
+def test_sentiment_seeds_do_not_change_the_split_seed(tmp_path: Path) -> None:
+    config = ExperimentConfig(
+        experiment={"name": "matrix", "kind": "sentiment"},
+        model={"mode": "lora"},
+        data={"split_seed": 17},
+        optimization={},
+        evaluation={"seed": 17},
+        output={"result": str(tmp_path / "seed-17.json"), "directory": str(tmp_path / "run")},
+        generation={},
+        source_path=tmp_path / "config.toml",
+    )
+
+    runs = sentiment_seeds(config, [17, 23, 41])
+
+    assert [run.data["split_seed"] for run in runs] == [17, 17, 17]
+    assert [run.evaluation["seed"] for run in runs] == [17, 23, 41]
+    assert [Path(run.output["result"]).name for run in runs] == [
+        "seed-17.json",
+        "seed-23.json",
+        "seed-41.json",
+    ]
+
+
+def test_metric_replay_allows_float_rounding_but_not_metric_drift() -> None:
+    expected = {"nested": {"score": 0.2721848367349916}, "count": 518}
+    assert _metrics_match(expected, {"nested": {"score": 0.2721849}, "count": 518})
+    assert not _metrics_match(expected, {"nested": {"score": 0.2729}, "count": 518})

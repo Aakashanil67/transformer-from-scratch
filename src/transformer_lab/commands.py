@@ -187,3 +187,60 @@ def evaluate_sentiment(config_path: Path, *, device_name: str = "auto") -> Path:
     from transformer_lab.experiments.sentiment import evaluate_sentiment_run
 
     return evaluate_sentiment_run(load_experiment_config(config_path), resolve_device(device_name))
+
+
+def run_sentiment_matrix(
+    config_paths: list[Path],
+    *,
+    seeds: list[int],
+    device_name: str,
+    output: Path,
+    resume: bool = False,
+) -> Path:
+    """Run a fixed-split seed matrix and write its paired comparison."""
+    from transformer_lab.experiments.baseline import run_baseline
+    from transformer_lab.experiments.comparison import RunOutput, build_comparison
+    from transformer_lab.experiments.sentiment import run_sentiment_experiment, sentiment_seeds
+
+    device = resolve_device(device_name)
+    runs = []
+    for path in config_paths:
+        config = load_experiment_config(path)
+        mode = str(config.model.get("mode"))
+        if mode == "baseline":
+            result = run_baseline(config)
+            runs.append(
+                RunOutput(
+                    "tfidf",
+                    int(config.evaluation.get("seed", 17)),
+                    result,
+                    Path(config.output["directory"]) / "evaluation.joblib",
+                )
+            )
+            continue
+        for seeded in sentiment_seeds(config, seeds):
+            result = Path(seeded.output["result"])
+            output_dir = Path(seeded.output["directory"])
+            evaluation = output_dir / "evaluation.pt"
+            completed = (
+                resume
+                and result.exists()
+                and evaluation.exists()
+                and '"status": "completed"' in result.read_text(encoding="utf-8", errors="strict")
+            )
+            if not completed:
+                result = run_sentiment_experiment(
+                    seeded,
+                    device=device,
+                    seed=int(seeded.evaluation["seed"]),
+                    resume=resume and (output_dir / "training.pt").exists(),
+                )
+            runs.append(
+                RunOutput(
+                    mode,
+                    int(seeded.evaluation["seed"]),
+                    result,
+                    evaluation,
+                )
+            )
+    return build_comparison(runs, output.resolve())

@@ -1,4 +1,5 @@
 {
+  "artifacts": {},
   "config": {
     "data": {
       "test": "../../data/prepared/tiny_shakespeare/test.txt",
@@ -51,7 +52,7 @@
       "transformers": "4.57.6"
     },
     "platform": "Windows",
-    "python": "3.12.10",
+    "python": "3.12.14",
     "torch": "2.13.0+cpu"
   },
   "error": null,
@@ -195,12 +196,13 @@
     "total": 65536,
     "trainable": 65536
   },
+  "provenance": {},
   "run_id": "tiny-shakespeare-bigram",
-  "schema_version": 1,
+  "schema_version": 2,
   "status": "completed",
-  "timestamp_utc": "2026-09-12T09:11:43.591754Z",
+  "timestamp_utc": "2026-09-12T18:18:20.057654Z",
   "timing": {
-    "tokens_per_second": 60439.180359729195,
-    "train_seconds": 0.42356629999994766
+    "tokens_per_second": 52909.54988367181,
+    "train_seconds": 0.48384460000670515
   }
 }

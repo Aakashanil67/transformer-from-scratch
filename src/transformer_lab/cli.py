@@ -10,6 +10,7 @@ from pathlib import Path
 from transformer_lab import __version__
 from transformer_lab.commands import (
     evaluate_sentiment,
+    run_sentiment_matrix,
     sample,
     train_lm,
     train_sentiment,
@@ -29,6 +30,12 @@ def build_parser() -> argparse.ArgumentParser:
             command.add_argument("--seed", type=int)
         if name in {"train-lm", "train-sentiment"}:
             command.add_argument("--resume", action="store_true")
+    matrix = commands.add_parser("run-sentiment-matrix")
+    matrix.add_argument("--config", action="append", required=True)
+    matrix.add_argument("--seeds", nargs="+", type=int, required=True)
+    matrix.add_argument("--device", choices=("auto", "cpu", "cuda"), default="cuda")
+    matrix.add_argument("--output", default="reports/results/financial-phrasebank-comparison.json")
+    matrix.add_argument("--resume", action="store_true")
     return parser
 
 
@@ -55,9 +62,18 @@ def main(argv: Sequence[str] | None = None) -> int:
                 resume=args.resume,
             )
             print(f"Wrote {result}")
-        else:
+        elif args.command == "evaluate-sentiment":
             result = evaluate_sentiment(Path(args.config), device_name=args.device)
             print(f"Verified {result}")
+        else:
+            result = run_sentiment_matrix(
+                [Path(path) for path in args.config],
+                seeds=args.seeds,
+                device_name=args.device,
+                output=Path(args.output),
+                resume=args.resume,
+            )
+            print(f"Wrote {result}")
     except (FileNotFoundError, OSError, RuntimeError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 2

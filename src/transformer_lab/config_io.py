@@ -31,6 +31,9 @@ _KEYS = {
         "target_modules",
         "tolerance",
         "prompts",
+        "batch_prompts",
+        "random_token_lengths",
+        "hidden_state_tolerance",
     },
     "data": {
         "raw_file",
@@ -42,6 +45,7 @@ _KEYS = {
         "dataset_revision",
         "max_length",
         "seed",
+        "split_seed",
     },
     "optimization": {
         "steps",

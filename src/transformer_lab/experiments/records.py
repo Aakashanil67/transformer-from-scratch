@@ -22,6 +22,8 @@ class ExperimentRecord:
     data: dict[str, Any] = field(default_factory=dict)
     optimization: dict[str, Any] = field(default_factory=dict)
     environment: dict[str, Any] = field(default_factory=dict)
+    provenance: dict[str, Any] = field(default_factory=dict)
+    artifacts: dict[str, Any] = field(default_factory=dict)
     parameters: dict[str, Any] = field(default_factory=dict)
     timing: dict[str, Any] = field(default_factory=dict)
     memory: dict[str, Any] = field(default_factory=dict)
@@ -30,7 +32,7 @@ class ExperimentRecord:
     timestamp_utc: str = field(
         default_factory=lambda: datetime.now(UTC).isoformat().replace("+00:00", "Z")
     )
-    schema_version: int = 1
+    schema_version: int = 2
 
     def __post_init__(self) -> None:
         if not self.run_id.strip():

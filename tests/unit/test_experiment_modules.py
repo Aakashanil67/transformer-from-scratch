@@ -181,3 +181,12 @@ def test_parity_runner_records_prompt_errors_and_agreement(tmp_path: Path, monke
     payload = result_path.read_text(encoding="utf-8")
     assert '"status": "completed"' in payload
     assert '"next_token_agreement": 1.0' in payload
+
+
+def test_random_parity_cases_are_seeded_and_cover_requested_lengths() -> None:
+    first = parity.random_token_cases([1, 4, 9], vocab_size=32, seed=17)
+    second = parity.random_token_cases([1, 4, 9], vocab_size=32, seed=17)
+
+    assert [tuple(case.shape) for case in first] == [(1, 1), (1, 4), (1, 9)]
+    assert all(torch.equal(left, right) for left, right in zip(first, second, strict=True))
+    assert all(int(case.max()) < 32 for case in first)

@@ -12,10 +12,25 @@ def test_experiment_record_round_trips_with_a_stable_schema(tmp_path) -> None:
 
     payload = json.loads(destination.read_text(encoding="utf-8"))
 
-    assert payload["schema_version"] == 1
+    assert payload["schema_version"] == 2
     assert payload["run_id"] == "demo"
     assert payload["metrics"] == {"macro_f1": 0.8}
     assert payload["timestamp_utc"].endswith("Z")
+
+
+def test_experiment_record_keeps_source_and_artifact_fingerprints() -> None:
+    record = ExperimentRecord(
+        run_id="fingerprinted",
+        status="completed",
+        provenance={"source_tree_sha256": "a" * 64},
+        artifacts={"model": {"sha256": "b" * 64}},
+        metrics={},
+    )
+
+    payload = record.to_dict()
+
+    assert payload["provenance"]["source_tree_sha256"] == "a" * 64
+    assert payload["artifacts"]["model"]["sha256"] == "b" * 64
 
 
 def test_experiment_record_serialises_immutable_nested_mappings() -> None:

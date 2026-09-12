@@ -6,6 +6,7 @@ kind = "gpt2-parity"
 base_model = "openai-community/gpt2"
 model_revision = "607a30d783dfa663caf39e06633721c8d4cfcd7e"
 tolerance = 0.0002
+hidden_state_tolerance = 0.001
 prompts = [
     "Hello",
     "The market opened",
@@ -13,6 +14,8 @@ prompts = [
     "Café prices changed.",
     "The board met on Monday. The discussion continued after lunch.",
 ]
+batch_prompts = ["Short", "A somewhat longer market sentence.", "Revenue rose."]
+random_token_lengths = [1, 8, 32, 64]
 
 [evaluation]
 seed = 17

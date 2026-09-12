@@ -12,6 +12,7 @@ num_labels = 3
 dataset_revision = "8d3fe0c36d5feec6b3cc5e455b0fcb4820fb9964"
 subset = "75Agree"
 max_length = 64
+split_seed = 17
 
 [optimization]
 epochs = 3

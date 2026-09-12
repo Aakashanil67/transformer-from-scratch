@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+import pytest
 import torch
 from transformers import GPT2Tokenizer
 
@@ -83,3 +84,12 @@ def test_local_transformer_generator_rejects_missing_artifact(tmp_path: Path) ->
         assert "model.pt" in str(error)
     else:
         raise AssertionError("missing local model was accepted")
+
+
+def test_local_transformer_generator_rejects_incomplete_artifact(tmp_path: Path) -> None:
+    artifact = tmp_path / "incomplete"
+    (artifact / "tokenizer").mkdir(parents=True)
+    torch.save({"schema_version": 1}, artifact / "model.pt")
+
+    with pytest.raises(ValueError, match="incomplete"):
+        load_local_generator(artifact, torch.device("cpu"))

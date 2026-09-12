@@ -22,7 +22,7 @@ from transformer_lab.data.financial_phrasebank import (
 )
 from transformer_lab.evaluation.classification import classification_metrics
 from transformer_lab.experiments.records import ExperimentRecord
-from transformer_lab.experiments.runtime import environment_metadata
+from transformer_lab.experiments.runtime import environment_metadata, file_sha256, source_provenance
 
 REPOSITORY = "financial_phrasebank"
 REVISION = "8d3fe0c36d5feec6b3cc5e455b0fcb4820fb9964"
@@ -56,7 +56,8 @@ def run_baseline(config: ExperimentConfig | None = None) -> Path:
     )
     examples = load_phrasebank(archive_path, str(config.data.get("subset", "75Agree")))
     seed = int(config.evaluation.get("seed", SEED))
-    splits = split_phrasebank(examples, seed=seed)
+    split_seed = int(config.data.get("split_seed", SEED))
+    splits = split_phrasebank(examples, seed=split_seed)
     train_text = [example.text for example in splits.train]
     validation_text = [example.text for example in splits.validation]
     test_text = [example.text for example in splits.test]
@@ -69,13 +70,16 @@ def run_baseline(config: ExperimentConfig | None = None) -> Path:
     classifier.fit(vectorizer.fit_transform(train_text), train_labels)
     elapsed_seconds = perf_counter() - started
     validation_predictions = classifier.predict(vectorizer.transform(validation_text))
+    validation_probabilities = classifier.predict_proba(vectorizer.transform(validation_text))
     test_features = vectorizer.transform(test_text)
     test_predictions = classifier.predict(test_features)
+    test_probabilities = classifier.predict_proba(test_features)
     labels = ["negative", "neutral", "positive"]
     validation_metrics = classification_metrics(
         np.asarray(validation_labels),
         np.asarray(validation_predictions),
         labels=labels,
+        probabilities=validation_probabilities,
         bootstrap_samples=int(config.evaluation.get("bootstrap_samples", 1_000)),
         seed=seed,
     )
@@ -83,6 +87,7 @@ def run_baseline(config: ExperimentConfig | None = None) -> Path:
         np.asarray(test_labels),
         np.asarray(test_predictions),
         labels=labels,
+        probabilities=test_probabilities,
         bootstrap_samples=int(config.evaluation.get("bootstrap_samples", 1_000)),
         seed=seed,
     )
@@ -90,9 +95,18 @@ def run_baseline(config: ExperimentConfig | None = None) -> Path:
     model_path = Path(config.output.get("directory", "artifacts/sentiment/tfidf")) / "model.joblib"
     model_path.parent.mkdir(parents=True, exist_ok=True)
     dump((vectorizer, classifier), model_path)
+    evaluation_path = model_path.with_name("evaluation.joblib")
     dump(
-        {"features": test_features, "targets": np.asarray(test_labels), "labels": labels},
-        model_path.with_name("evaluation.joblib"),
+        {
+            "features": test_features,
+            "targets": np.asarray(test_labels),
+            "predictions": np.asarray(test_predictions),
+            "target_ids": np.asarray([labels.index(label) for label in test_labels]),
+            "prediction_ids": np.asarray([labels.index(label) for label in test_predictions]),
+            "probabilities": np.asarray(test_probabilities),
+            "labels": labels,
+        },
+        evaluation_path,
     )
     record = ExperimentRecord(
         run_id=config.experiment["name"],
@@ -111,6 +125,11 @@ def run_baseline(config: ExperimentConfig | None = None) -> Path:
             "split": split_summary(splits),
         },
         environment=environment_metadata(torch.device("cpu")),
+        provenance=source_provenance(config.source_path),
+        artifacts={
+            "model": {"sha256": file_sha256(model_path)},
+            "evaluation": {"sha256": file_sha256(evaluation_path)},
+        },
         parameters={
             "total": int(classifier.coef_.size + classifier.intercept_.size),
             "trainable": int(classifier.coef_.size + classifier.intercept_.size),

@@ -1,6 +1,7 @@
 import os
 
 import pytest
+import torch
 
 pytestmark = pytest.mark.integration
 
@@ -15,5 +16,6 @@ def test_pinned_gpt2_parity_is_opt_in() -> None:
     from transformer_lab.experiments.parity import run
 
     root = Path(__file__).resolve().parents[2]
-    result = run(load_experiment_config(root / "configs/gpt2/parity.toml"))
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    result = run(load_experiment_config(root / "configs/gpt2/parity.toml"), device=device)
     assert '"status": "completed"' in result.read_text(encoding="utf-8")

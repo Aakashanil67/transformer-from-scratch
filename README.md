@@ -4,15 +4,20 @@ This repository implements a compact decoder-only transformer in raw PyTorch and
 
 The project is deliberately inspectable. The important operations are in `src/transformer_lab`, rather than hidden behind a training framework.
 
+## The problem
+
+The project asks whether a small, readable transformer can reproduce a public GPT-2 checkpoint closely enough to support genuine generation and downstream classification. A toy language-model loss cannot answer that on its own. The repository therefore checks the forward pass against pinned GPT-2 weights, compares parameter-efficient sentiment updates with full tuning and a TF-IDF reference, and keeps the artefacts required to replay each score.
+
 ## Verified results
 
 | Check | Result |
 | --- | --- |
 | GPT-2 small conversion | 5 fixed prompts; max absolute logit error `1.125e-4` at a `2e-4` CPU tolerance; next-token agreement 100% |
+| Expanded GPT-2 parity | 4 random token lengths, one mixed-length batch and all hidden-state boundaries; maximum hidden-state error `4.883e-4` at a `1e-3` tolerance |
 | Financial PhraseBank TF-IDF reference | Test macro-F1 `0.8007` (95% bootstrap interval `0.7547–0.8414`); accuracy `0.8533` |
-| Financial PhraseBank GPT-2 head-only | Test macro-F1 `0.3945`; accuracy `0.6795`; 2,307 trainable parameters |
-| Financial PhraseBank GPT-2 LoRA | Test macro-F1 `0.7182` (95% interval `0.6666–0.7660`); accuracy `0.8031`; 223,491 trainable parameters |
-| Financial PhraseBank GPT-2 full tuning | Test macro-F1 `0.8645` (95% interval `0.8250–0.9005`); accuracy `0.8958` |
+| Financial PhraseBank GPT-2 head-only | Three-seed test macro-F1 `0.4136 ± 0.0227`; accuracy `0.6918 ± 0.0150` |
+| Financial PhraseBank GPT-2 LoRA | Three-seed test macro-F1 `0.6931 ± 0.0471`; accuracy `0.7960 ± 0.0175` |
+| Financial PhraseBank GPT-2 full tuning | Three-seed test macro-F1 `0.8687 ± 0.0037`; accuracy `0.8996 ± 0.0039` |
 | Tiny Shakespeare byte-bigram | Validation loss `5.990` → `2.772` over 100 updates |
 
 The result summaries are tracked in [`reports/results`](reports/results). Raw data, pretrained weights, checkpoints, and transient run files are ignored. The GPT-2 parity summary uses the pinned `openai-community/gpt2` revision `607a30d783dfa663caf39e06633721c8d4cfcd7e`. The Financial PhraseBank archive uses dataset revision `8d3fe0c36d5feec6b3cc5e455b0fcb4820fb9964`.
@@ -69,6 +74,12 @@ The GPT-2 sentiment profiles share the same duplicate-safe split and metric code
 .venv-gpu\Scripts\transformer-lab.exe evaluate-sentiment --config configs\sentiment\lora-gpt2-small.toml --device cuda
 ```
 
+For the reported comparison, keep the split seed at 17 and vary only the optimisation seed. The command checkpoints every epoch and can resume after an interruption:
+
+```powershell
+.venv-gpu\Scripts\transformer-lab.exe run-sentiment-matrix --config configs\sentiment\baseline.toml --config configs\sentiment\head-only-gpt2-small.toml --config configs\sentiment\lora-gpt2-small.toml --config configs\sentiment\full-gpt2-small.toml --seeds 17 23 41 --device cuda --output reports\results\financial-phrasebank-comparison.json --resume
+```
+
 ## Local playground
 
 After GPT-2 parity and the sentiment runs have produced their ignored local artefacts:
@@ -77,7 +88,7 @@ After GPT-2 parity and the sentiment runs have produced their ignored local arte
 .venv\Scripts\python.exe -m streamlit run app\playground.py
 ```
 
-The Generation tab samples from the local implementation loaded with mapped GPT-2 small weights. The Sentiment tab defaults to the local LoRA checkpoint and retains TF-IDF as a comparison. Both return genuine model outputs. The app performs no network download while serving a request; missing artefacts produce setup instructions instead.
+The Generation tab samples from the local implementation loaded with mapped GPT-2 small weights. The Sentiment tab defaults to the seed-17 local LoRA checkpoint and retains TF-IDF as a comparison. Both return genuine model outputs. The app performs no network download while serving a request; missing artefacts produce setup instructions instead.
 
 ## What is implemented
 
@@ -88,8 +99,22 @@ The Generation tab samples from the local implementation loaded with mapped GPT-
 - Deterministic batches, separate training/evaluation random streams, gradient accumulation, clipping, optional mixed precision, and atomic checkpoints.
 - LoRA injection for selected linear projections, with frozen base weights, adapter-only serialization, and parameter accounting.
 - Grouped, stratified Financial PhraseBank splitting that prevents exact duplicates crossing partitions.
+- Validation-set temperature scaling with test-set Brier score and expected calibration error.
+- Three-seed summaries with aligned paired-bootstrap comparisons.
+- Source-tree, configuration and checkpoint fingerprints in new result records.
 
 The implementation is intended for inspection and reproducible small runs. It is not a claim that a laptop-scale experiment matches a production training system.
+
+## Design decisions
+
+- Raw PyTorch keeps tensor shapes and weight tying visible. Hugging Face supplies the pinned GPT-2 reference and tokenizer only.
+- The PhraseBank splitter groups normalised duplicate sentences before stratification. A row-wise split would allow repeated sentences to cross the test boundary.
+- Full tuning is the accuracy reference; LoRA makes the parameter/accuracy trade-off measurable rather than implied.
+- A fixed split seed and separate optimisation seeds measure training variation without changing the benchmark.
+
+## Limits and next steps
+
+The three-seed matrix is stronger than a single run, but it is still one dataset, one GPT-2 scale and one maximum sequence length. The labels are sentence-level judgements from the original annotator pool, not current market impact. The next useful extension is a time-based financial-news holdout, followed by a larger-model comparison if the hardware budget allows it.
 
 ## Repository map
 

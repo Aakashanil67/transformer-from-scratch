@@ -8,23 +8,23 @@ How much adaptation does GPT-2 small need to compete with a sparse lexical refer
 
 The 75-agreement subset is loaded from the pinned dataset revision and grouped by a Unicode-normalised sentence hash. Seed 17 produces 2,417 training rows, 518 validation rows, and 518 test rows. The combined split fingerprint is `f9431e8d61a365a385c865796967754eb4da00e8e05cc3bd94a1c03f53727cf2`. Validation macro-F1 selects the saved transformer epoch; the test partition is evaluated afterwards from a frozen local artefact.
 
-The reference uses word 1–2 gram TF-IDF features (`min_df=2`, sublinear term frequency) and balanced logistic regression. `head_only` trains the 2,307-parameter classifier head. `lora` also trains rank-4 adapters on the attention input and output projections, for a total of 223,491 trainable parameters. `full` trains all 124,442,115 parameters. Each transformer run uses GPT-2 small, sequences of at most 64 tokens, micro-batches of one, gradient accumulation over 16 batches, mixed precision, and three epochs.
+The reference uses word 1–2 gram TF-IDF features (`min_df=2`, sublinear term frequency) and balanced logistic regression. `head_only` trains the 2,307-parameter classifier head. `lora` also trains rank-4 adapters on the attention input and output projections, for a total of 223,491 trainable parameters out of 124,663,299. `full` trains all 124,442,115 parameters. Each transformer run uses GPT-2 small, sequences of at most 64 tokens, micro-batches of one, gradient accumulation over 16 batches, mixed precision, and three epochs.
 
 ## Results
 
-| Method | Test macro-F1 | 95% bootstrap interval | Accuracy | Peak allocated VRAM | Status |
+| Method | Test macro-F1 (mean ± SD) | Accuracy (mean ± SD) | Peak allocated VRAM | Status |
 | --- | ---: | ---: | ---: | ---: | --- |
-| TF-IDF + balanced logistic regression | 0.8007 | 0.7547–0.8414 | 0.8533 | — | completed |
-| GPT-2 head-only | 0.3945 | 0.3631–0.4245 | 0.6795 | 1.01 GB | completed |
-| GPT-2 LoRA | 0.7182 | 0.6666–0.7660 | 0.8031 | 1.01 GB | completed |
-| GPT-2 full fine-tuning | 0.8645 | 0.8250–0.9005 | 0.8958 | 2.01 GB | completed |
+| TF-IDF + balanced logistic regression | 0.8007 | 0.8533 | — | completed |
+| GPT-2 head-only | 0.4136 ± 0.0227 | 0.6918 ± 0.0150 | 0.96 GB | completed |
+| GPT-2 LoRA | 0.6931 ± 0.0471 | 0.7960 ± 0.0175 | 0.96 GB | completed |
+| GPT-2 full fine-tuning | 0.8687 ± 0.0037 | 0.8996 ± 0.0039 | 3.28 GB | completed |
 
 The full model's per-class F1 scores are 0.8348 for negative, 0.9337 for neutral, and 0.8249 for positive. LoRA reaches 0.6542, 0.8908, and 0.6094 respectively. The head-only model never predicts the negative class correctly; its negative-class F1 is zero. Its 0.6795 accuracy obscures that failure because neutral examples form most of the test set.
 
 ## Interpretation
 
-Full fine-tuning produced the strongest result for this split and seed. LoRA improved substantially on a frozen representation but did not surpass the TF-IDF reference. It trained 0.1793% of the combined model parameters and used roughly half the peak allocated memory of full tuning. This is a useful efficiency trade-off on the test laptop, not a general ranking of the methods.
+Full fine-tuning produced the strongest result on every seed. The paired bootstrap differences against TF-IDF were positive for all three full-tuning runs (0.06, 0.07 and 0.07 macro-F1; each 95% interval excluded zero). LoRA improved on a frozen representation but remained below TF-IDF on all three aligned comparisons. It trained 0.1793% of the combined model parameters and used substantially less memory than full tuning. This is a result for the fixed split and hardware profile, not a general ranking of adaptation methods.
 
 ## Limitations
 
-The dataset is small, and exact grouping does not remove semantic overlap. One seed does not characterise training variance. The probability scores have not been calibrated. The study covers one base-model scale and one maximum sequence length. Training time and memory reflect a particular Windows laptop and software build. The bootstrap intervals describe resampling uncertainty on the fixed test partition, not variation between training runs.
+The dataset is small, and exact grouping does not remove semantic overlap. The three seeds give a first estimate of training variation, not a definitive uncertainty interval. The probability scores are temperature-scaled on validation data but remain model scores, not decision probabilities. The study covers one base-model scale and one maximum sequence length. Training time and memory reflect a particular Windows laptop and software build. The bootstrap intervals describe resampling uncertainty on the fixed test partition; the reported across-seed standard deviations describe training variation. Paired bootstrap comparisons use the same test rows for each method.

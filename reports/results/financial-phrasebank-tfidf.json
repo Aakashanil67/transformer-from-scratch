@@ -1,7 +1,16 @@
 {
+  "artifacts": {
+    "evaluation": {
+      "sha256": "1c894bbb8067e7fed37321dcbb6f4612b15894de6fc520de484e0fc8963c3911"
+    },
+    "model": {
+      "sha256": "2069cbc4386322cf8c87137da4751750eac9043add8d0c2fca8b77a1a6d565d6"
+    }
+  },
   "config": {
     "data": {
       "dataset_revision": "8d3fe0c36d5feec6b3cc5e455b0fcb4820fb9964",
+      "split_seed": 17,
       "subset": "75Agree"
     },
     "evaluation": {
@@ -71,24 +80,25 @@
   },
   "environment": {
     "cuda": null,
-    "cuda_available": false,
+    "cuda_available": true,
     "device": "cpu",
     "packages": {
       "joblib": "1.5.3",
       "numpy": "2.5.2",
       "scikit-learn": "1.9.0",
-      "torch": "2.13.0",
+      "torch": "2.9.0+cu128",
       "transformers": "4.57.6"
     },
     "platform": "Windows",
-    "python": "3.12.14",
-    "torch": "2.13.0+cpu"
+    "python": "3.12.10",
+    "torch": "2.9.0+cu128"
   },
   "error": null,
   "memory": {},
   "metrics": {
     "test": {
       "accuracy": 0.8532818532818532,
+      "brier_score": 0.29317601529611254,
       "confusion_matrix": [
         [
           41,
@@ -106,6 +116,7 @@
           95
         ]
       ],
+      "expected_calibration_error": 0.2017506363946747,
       "macro_f1": 0.8006893541811818,
       "macro_f1_bootstrap_ci": {
         "lower": 0.7547137985807687,
@@ -131,10 +142,11 @@
           "support": 133
         }
       },
-      "probabilities_recorded": false
+      "probabilities_recorded": true
     },
     "validation": {
       "accuracy": 0.8359073359073359,
+      "brier_score": 0.2963425133289601,
       "confusion_matrix": [
         [
           45,
@@ -152,6 +164,7 @@
           90
         ]
       ],
+      "expected_calibration_error": 0.188205320626514,
       "macro_f1": 0.7830677548905299,
       "macro_f1_bootstrap_ci": {
         "lower": 0.7362708868524397,
@@ -177,7 +190,7 @@
           "support": 133
         }
       },
-      "probabilities_recorded": false
+      "probabilities_recorded": true
     }
   },
   "model": {
@@ -190,12 +203,18 @@
     "trainable": 23973,
     "trainable_share": 1.0
   },
+  "provenance": {
+    "config_sha256": "2f0538aeec2ae7113bd7cd51877ce1d7fd0c718c59f76bb386dc41c0e163f63e",
+    "git_commit": "42630bc45381b03b0f55a768a213982fccc9cfe3",
+    "git_dirty": true,
+    "source_tree_sha256": "9478a9dec9610f3bb32397490486b12aa63c1cfcbadd07e3d34244cf9fb22849"
+  },
   "run_id": "financial-phrasebank-tfidf",
-  "schema_version": 1,
+  "schema_version": 2,
   "status": "completed",
-  "timestamp_utc": "2026-09-12T13:27:59.078248Z",
+  "timestamp_utc": "2026-09-12T17:35:09.926296Z",
   "timing": {
-    "examples_per_second": 6039.753422179225,
-    "train_seconds": 0.40018189999682363
+    "examples_per_second": 6109.831874717363,
+    "train_seconds": 0.39559189999999944
   }
 }

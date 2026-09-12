@@ -2,7 +2,7 @@
 
 ## Source
 
-The experiment downloads the `financial_phrasebank` dataset from [Hugging Face](https://huggingface.co/datasets/financial_phrasebank) at revision `8d3fe0c36d5feec6b3cc5e455b0fcb4820fb9964`. It reads the `Sentences_75Agree.txt` member of `FinancialPhraseBank-v1.0.zip` and applies the archive's Latin-1 decoding.
+The experiment downloads the `financial_phrasebank` dataset from [Hugging Face](https://huggingface.co/datasets/takala/financial_phrasebank) at revision `8d3fe0c36d5feec6b3cc5e455b0fcb4820fb9964`. It reads the `Sentences_75Agree.txt` member of `FinancialPhraseBank-v1.0.zip` and applies the archive's Latin-1 decoding.
 
 The dataset contains financial news sentences labelled `negative`, `neutral`, or `positive`. The project uses the 75-agreement subset, with 3,453 rows and 3,448 exact sentence groups. Five rows are repeated sentences; no duplicate group crosses a split.
 
@@ -20,4 +20,4 @@ The split supports a small comparison between a TF-IDF reference classifier and 
 
 The labels are sentence-level financial sentiment judgements, not investment advice or a measure of market impact. Exact deduplication prevents one obvious leakage path, but semantically related news may still occur across partitions. The dataset is small and the experiments do not establish performance on current financial reporting or other languages.
 
-Users must review and follow the dataset's own licence and citation terms before redistributing it or derived material.
+The dataset card identifies the source licence as Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported. This project downloads the archive at runtime and does not redistribute it. Users must review the [dataset card](https://huggingface.co/datasets/takala/financial_phrasebank) and licence before redistributing the data or derived material. Cite Malo, Sinha, Korhonen, Wallenius and Takala (2014), “Good debt or bad debt: Detecting semantic orientations in economic texts”, *Journal of the Association for Information Science and Technology*, 65(4), 782–796, [doi:10.1002/asi.23062](https://doi.org/10.1002/asi.23062).

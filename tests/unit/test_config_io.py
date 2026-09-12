@@ -99,6 +99,28 @@ def test_sentiment_configuration_rejects_unknown_mode(tmp_path: Path) -> None:
         load_experiment_config(config_file)
 
 
+def test_sentiment_config_accepts_independent_split_and_training_seeds(tmp_path: Path) -> None:
+    config_file = tmp_path / "experiment.toml"
+    config_file.write_text(
+        """[experiment]
+name = "seed-test"
+kind = "sentiment"
+[model]
+mode = "lora"
+[data]
+split_seed = 17
+[evaluation]
+seed = 41
+""",
+        encoding="utf-8",
+    )
+
+    config = load_experiment_config(config_file)
+
+    assert config.data["split_seed"] == 17
+    assert config.evaluation["seed"] == 41
+
+
 @pytest.mark.parametrize(
     ("section", "field", "value"),
     [

@@ -11,6 +11,10 @@ from urllib.request import urlopen
 def download_file(url: str, destination: Path, *, expected_sha256: str | None = None) -> Path:
     """Download ``url`` to ``destination`` and return the destination path."""
     destination.parent.mkdir(parents=True, exist_ok=True)
+    if destination.exists() and expected_sha256 is not None:
+        digest = hashlib.sha256(destination.read_bytes()).hexdigest()
+        if digest == expected_sha256.lower():
+            return destination
     temporary = destination.with_suffix(destination.suffix + ".part")
     try:
         with urlopen(url) as response, temporary.open("wb") as output:

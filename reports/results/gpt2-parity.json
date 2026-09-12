@@ -1,4 +1,9 @@
 {
+  "artifacts": {
+    "model": {
+      "sha256": "f35f563cd98ff1dcd21a05e5356bfe1a9b844d4077678e86b3df5c36fbaf070f"
+    }
+  },
   "config": {
     "data": {},
     "evaluation": {
@@ -11,6 +16,12 @@
     "generation": {},
     "model": {
       "base_model": "openai-community/gpt2",
+      "batch_prompts": [
+        "Short",
+        "A somewhat longer market sentence.",
+        "Revenue rose."
+      ],
+      "hidden_state_tolerance": 0.001,
       "model_revision": "607a30d783dfa663caf39e06633721c8d4cfcd7e",
       "prompts": [
         "Hello",
@@ -18,6 +29,12 @@
         "Revenue rose 12.4% in 2024.",
         "Caf\u00e9 prices changed.",
         "The board met on Monday. The discussion continued after lunch."
+      ],
+      "random_token_lengths": [
+        1,
+        8,
+        32,
+        64
       ],
       "tolerance": 0.0002
     },
@@ -28,7 +45,9 @@
     }
   },
   "data": {
+    "batch_case_count": 1,
     "prompt_count": 5,
+    "random_case_count": 4,
     "seed": 17
   },
   "environment": {
@@ -49,8 +68,23 @@
   "error": null,
   "memory": {},
   "metrics": {
+    "batched_cases": [
+      {
+        "batch_size": 3,
+        "max_absolute_error": 6.103515625e-05,
+        "mean_absolute_error": 1.0506441867619287e-05,
+        "next_token_agreement": 1.0,
+        "token_lengths": [
+          1,
+          6,
+          4
+        ]
+      }
+    ],
+    "hidden_state_tolerance": 0.001,
     "max_absolute_error": 0.0001125335693359375,
-    "mean_absolute_error": 2.9186300162109545e-05,
+    "max_hidden_state_error": 0.00048828125,
+    "mean_absolute_error": 2.088229171022249e-05,
     "next_token_agreement": 1.0,
     "prompts": [
       {
@@ -89,6 +123,36 @@
         "tokens": 12
       }
     ],
+    "random_token_cases": [
+      {
+        "max_absolute_error": 4.9591064453125e-05,
+        "max_hidden_state_error": 0.00048828125,
+        "mean_absolute_error": 2.7040045097237453e-05,
+        "next_token_agreement": true,
+        "tokens": 1
+      },
+      {
+        "max_absolute_error": 3.814697265625e-05,
+        "max_hidden_state_error": 3.0517578125e-05,
+        "mean_absolute_error": 6.109800324338721e-06,
+        "next_token_agreement": true,
+        "tokens": 8
+      },
+      {
+        "max_absolute_error": 7.62939453125e-05,
+        "max_hidden_state_error": 0.000244140625,
+        "mean_absolute_error": 1.060885188053362e-05,
+        "next_token_agreement": true,
+        "tokens": 32
+      },
+      {
+        "max_absolute_error": 6.103515625e-05,
+        "max_hidden_state_error": 6.103515625e-05,
+        "mean_absolute_error": 8.626277121948078e-06,
+        "next_token_agreement": true,
+        "tokens": 64
+      }
+    ],
     "tolerance": 0.0002
   },
   "model": {
@@ -100,11 +164,17 @@
   },
   "optimization": {},
   "parameters": {},
+  "provenance": {
+    "config_sha256": "97452a9139f91b8a87336097d85f489eafabe5a2f389007ef6b62c528d4773e8",
+    "git_commit": "42630bc45381b03b0f55a768a213982fccc9cfe3",
+    "git_dirty": true,
+    "source_tree_sha256": "529e2b6c7ea417e0dfddbc1e6c8b68d7735993d26e082916fbf660265a812f29"
+  },
   "run_id": "gpt2-small-parity",
-  "schema_version": 1,
+  "schema_version": 2,
   "status": "completed",
-  "timestamp_utc": "2026-09-12T14:07:20.162697Z",
+  "timestamp_utc": "2026-09-12T18:47:46.485083Z",
   "timing": {
-    "seconds": 0.8346931999985827
+    "seconds": 4.2347567999968305
   }
 }

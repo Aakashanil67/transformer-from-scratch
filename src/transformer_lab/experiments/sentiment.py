@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import random
+import re
 import time
 from collections import Counter
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 from typing import Any
 
@@ -27,9 +29,18 @@ from transformer_lab.data.financial_phrasebank import (
     split_phrasebank,
     split_summary,
 )
-from transformer_lab.evaluation.classification import classification_metrics
+from transformer_lab.evaluation.classification import (
+    apply_temperature,
+    classification_metrics,
+    fit_temperature,
+)
 from transformer_lab.experiments.records import ExperimentRecord
-from transformer_lab.experiments.runtime import environment_metadata, peak_memory
+from transformer_lab.experiments.runtime import (
+    environment_metadata,
+    file_sha256,
+    peak_memory,
+    source_provenance,
+)
 from transformer_lab.gpt2 import REVISION, gpt2_small_config, load_huggingface_gpt2_weights
 from transformer_lab.lora import LoRAConfig, inject_lora, parameter_report
 from transformer_lab.models.sentiment import SentimentClassifier
@@ -38,6 +49,34 @@ REPOSITORY = "financial_phrasebank"
 ARCHIVE = "data/FinancialPhraseBank-v1.0.zip"
 ARCHIVE_MEMBER = "FinancialPhraseBank-v1.0/Sentences_75Agree.txt"
 LABELS = ["negative", "neutral", "positive"]
+
+
+def sentiment_seeds(config: ExperimentConfig, seeds: list[int]) -> list[ExperimentConfig]:
+    """Derive isolated run paths while leaving the dataset partition unchanged."""
+    if not seeds or len(set(seeds)) != len(seeds):
+        raise ValueError("seeds must be a non-empty list without duplicates")
+    result_path = Path(config.output["result"])
+    directory = Path(config.output.get("directory", "artifacts/sentiment"))
+    runs = []
+    for seed in seeds:
+        name = result_path.name
+        if "seed-" in name:
+            name = re.sub(r"seed-\d+", f"seed-{seed}", name)
+        else:
+            name = f"{result_path.stem}-seed-{seed}{result_path.suffix}"
+        runs.append(
+            replace(
+                config,
+                data={**dict(config.data), "split_seed": int(config.data.get("split_seed", 17))},
+                evaluation={**dict(config.evaluation), "seed": seed},
+                output={
+                    **dict(config.output),
+                    "result": str(result_path.with_name(name)),
+                    "directory": str(directory.with_name(f"{directory.name}-seed-{seed}")),
+                },
+            )
+        )
+    return runs
 
 
 def _sha256(path: Path) -> str:
@@ -79,11 +118,12 @@ def _predict(
     model: SentimentClassifier,
     loader: DataLoader[tuple[Tensor, Tensor, Tensor]],
     device: torch.device,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     model.eval()
     targets: list[Tensor] = []
     predictions: list[Tensor] = []
     probabilities: list[Tensor] = []
+    raw_logits: list[Tensor] = []
     with torch.no_grad():
         for input_ids, attention_mask, labels in loader:
             logits, _ = model(
@@ -93,10 +133,12 @@ def _predict(
             targets.append(labels)
             predictions.append(logits.argmax(dim=-1).cpu())
             probabilities.append(logits.softmax(dim=-1).cpu())
+            raw_logits.append(logits.cpu())
     return (
         torch.cat(targets).numpy(),
         torch.cat(predictions).numpy(),
         torch.cat(probabilities).numpy(),
+        torch.cat(raw_logits).numpy(),
     )
 
 
@@ -172,7 +214,7 @@ def _train_transformer(
                 scaler.update()
                 optimizer.zero_grad(set_to_none=True)
             losses.append(float(loss.detach().cpu()))
-        targets, predictions, probabilities = _predict(model, validation_loader, device)
+        targets, predictions, probabilities, _ = _predict(model, validation_loader, device)
         validation = classification_metrics(
             targets,
             predictions,
@@ -285,7 +327,8 @@ def _execute_sentiment_experiment(
         )
     )
     examples = load_phrasebank(archive, str(config.data.get("subset", "75Agree")))
-    splits = split_phrasebank(examples, seed=run_seed)
+    split_seed = int(config.data.get("split_seed", 17))
+    splits = split_phrasebank(examples, seed=split_seed)
     tokenizer = AutoTokenizer.from_pretrained(
         str(config.model.get("base_model", "openai-community/gpt2")),
         revision=revision,
@@ -356,7 +399,10 @@ def _execute_sentiment_experiment(
         checkpoint_config=effective_config(config),
         resume=resume,
     )
-    targets, predictions, probabilities = _predict(model, test_loader, device)
+    validation_targets, _, _, validation_logits = _predict(model, validation_loader, device)
+    calibration_temperature = fit_temperature(validation_logits, validation_targets)
+    targets, predictions, _, test_logits = _predict(model, test_loader, device)
+    probabilities = apply_temperature(test_logits, calibration_temperature)
     result["test"] = classification_metrics(
         targets,
         predictions,
@@ -374,6 +420,7 @@ def _execute_sentiment_experiment(
         "revision": revision,
         "labels": LABELS,
         "num_labels": len(LABELS),
+        "calibration_temperature": calibration_temperature,
     }
     if mode == "lora":
         checkpoint_payload["lora"] = {
@@ -390,11 +437,15 @@ def _execute_sentiment_experiment(
             "input_ids": encoded[2][0],
             "attention_mask": encoded[2][1],
             "targets": encoded[2][2],
+            "predictions": torch.from_numpy(predictions),
+            "probabilities": torch.from_numpy(probabilities),
         },
         output_directory / "evaluation.pt",
     )
+    model_sha256 = file_sha256(checkpoint)
+    evaluation_sha256 = file_sha256(output_directory / "evaluation.pt")
     record = ExperimentRecord(
-        run_id=config.experiment["name"],
+        run_id=f"{config.experiment['name']}-seed-{run_seed}",
         status="completed",
         model={"id": config.model.get("base_model"), "revision": revision, "mode": mode},
         config=effective_config(config),
@@ -410,6 +461,11 @@ def _execute_sentiment_experiment(
         },
         optimization=config.optimization,
         environment=environment_metadata(device),
+        provenance=source_provenance(config.source_path),
+        artifacts={
+            "model": {"sha256": model_sha256},
+            "evaluation": {"sha256": evaluation_sha256},
+        },
         parameters={
             "total": counts.total,
             "trainable": counts.trainable,
@@ -427,11 +483,68 @@ def _execute_sentiment_experiment(
             "validation_candidates": result["validation_candidates"],
             "best_epoch": result["best_epoch"],
             "test": result["test"],
+            "calibration": {
+                "method": "temperature_scaling",
+                "validation_temperature": calibration_temperature,
+            },
         },
     )
     result_path = Path(config.output["result"])
     record.write(result_path)
     return result_path
+
+
+def _resolve_output_directory(config: ExperimentConfig, payload: dict[str, Any], mode: str) -> Path:
+    """Resolve matrix artefacts when a base config names a seeded result file."""
+    configured = Path(config.output.get("directory", "artifacts/sentiment"))
+    result_name = Path(str(config.output.get("result", ""))).name
+    match = re.search(r"(?:^|-)seed-(\d+)(?:\.[^.]+)?$", result_name)
+    if match is None:
+        return configured
+    base_name = re.sub(r"-seed-\d+$", "", configured.name)
+    candidate = configured.with_name(f"{base_name}-seed-{match.group(1)}")
+    model_name, evaluation_name = (
+        ("model.joblib", "evaluation.joblib")
+        if mode == "baseline"
+        else ("model.pt", "evaluation.pt")
+    )
+    model_path = candidate / model_name
+    evaluation_path = candidate / evaluation_name
+    if not model_path.exists() or not evaluation_path.exists():
+        return configured
+    expected_artifacts = payload.get("artifacts", {})
+    expected_model = expected_artifacts.get("model", {})
+    expected_evaluation = expected_artifacts.get("evaluation", {})
+    if (
+        isinstance(expected_model, dict)
+        and expected_model.get("sha256")
+        and file_sha256(model_path) != expected_model["sha256"]
+    ):
+        return configured
+    if (
+        isinstance(expected_evaluation, dict)
+        and expected_evaluation.get("sha256")
+        and file_sha256(evaluation_path) != expected_evaluation["sha256"]
+    ):
+        return configured
+    return candidate
+
+
+def _metrics_match(expected: Any, observed: Any) -> bool:
+    """Compare JSON metrics while allowing harmless CPU/GPU float round-off."""
+    if isinstance(expected, bool) or isinstance(observed, bool):
+        return expected is observed
+    if isinstance(expected, int | float) and isinstance(observed, int | float):
+        return math.isclose(float(expected), float(observed), rel_tol=1e-6, abs_tol=1e-6)
+    if isinstance(expected, dict) and isinstance(observed, dict):
+        return expected.keys() == observed.keys() and all(
+            _metrics_match(expected[key], observed[key]) for key in expected
+        )
+    if isinstance(expected, list) and isinstance(observed, list):
+        return len(expected) == len(observed) and all(
+            _metrics_match(left, right) for left, right in zip(expected, observed, strict=True)
+        )
+    return expected == observed
 
 
 def evaluate_sentiment_run(config: ExperimentConfig, device: torch.device) -> Path:
@@ -442,8 +555,8 @@ def evaluate_sentiment_run(config: ExperimentConfig, device: torch.device) -> Pa
     payload = json.loads(result_path.read_text(encoding="utf-8"))
     if payload.get("status") != "completed":
         raise RuntimeError("sentiment run is not complete; run train-sentiment first")
-    output_dir = Path(config.output.get("directory", "artifacts/sentiment"))
     mode = str(config.model.get("mode", "lora"))
+    output_dir = _resolve_output_directory(config, payload, mode)
     if mode == "baseline":
         evaluation_path = output_dir / "evaluation.joblib"
         model_path = output_dir / "model.joblib"
@@ -452,10 +565,12 @@ def evaluate_sentiment_run(config: ExperimentConfig, device: torch.device) -> Pa
         _, classifier = load(model_path)
         frozen = load(evaluation_path)
         predictions = classifier.predict(frozen["features"])
+        probabilities = classifier.predict_proba(frozen["features"])
         measured = classification_metrics(
             np.asarray(frozen["targets"]),
             np.asarray(predictions),
             labels=list(frozen["labels"]),
+            probabilities=np.asarray(probabilities),
             bootstrap_samples=int(config.evaluation.get("bootstrap_samples", 1_000)),
             seed=int(config.evaluation.get("seed", 17)),
         )
@@ -476,7 +591,10 @@ def evaluate_sentiment_run(config: ExperimentConfig, device: torch.device) -> Pa
             TensorDataset(frozen["input_ids"], frozen["attention_mask"], frozen["targets"]),
             batch_size=int(config.optimization.get("batch_size", 1)),
         )
-        targets, predictions, probabilities = _predict(model, loader, device)
+        targets, predictions, _, logits = _predict(model, loader, device)
+        probabilities = apply_temperature(
+            logits, float(checkpoint.get("calibration_temperature", 1.0))
+        )
         measured = classification_metrics(
             targets,
             predictions,
@@ -485,7 +603,7 @@ def evaluate_sentiment_run(config: ExperimentConfig, device: torch.device) -> Pa
             bootstrap_samples=int(config.evaluation.get("bootstrap_samples", 1_000)),
             seed=int(config.evaluation.get("seed", 17)),
         )
-    if measured != payload.get("metrics", {}).get("test"):
+    if not _metrics_match(measured, payload.get("metrics", {}).get("test")):
         raise RuntimeError("recomputed test metrics do not match the recorded result")
     return result_path
 

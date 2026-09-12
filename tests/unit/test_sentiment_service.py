@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+import pytest
 import torch
 from joblib import dump
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -30,7 +31,8 @@ def test_sentiment_service_returns_label_and_probabilities(tmp_path: Path) -> No
 
     assert result["label"] in {"negative", "neutral", "positive"}
     assert abs(sum(result["probabilities"].values()) - 1) < 1e-6
-    assert result["confidence"] == max(result["probabilities"].values())
+    assert "confidence" not in result
+    assert result["top_class_probability"] == max(result["probabilities"].values())
 
 
 def test_loaded_tfidf_checkpoint_can_be_reused_for_multiple_headlines(tmp_path: Path) -> None:
@@ -73,6 +75,7 @@ def test_local_transformer_sentiment_classifier_is_offline(tmp_path: Path) -> No
             "mode": "head_only",
             "labels": ["negative", "neutral", "positive"],
             "num_labels": 3,
+            "calibration_temperature": 2.0,
         },
         checkpoint,
     )
@@ -84,3 +87,14 @@ def test_local_transformer_sentiment_classifier_is_offline(tmp_path: Path) -> No
 
     assert result["label"] in {"negative", "neutral", "positive"}
     assert abs(sum(result["probabilities"].values()) - 1) < 1e-6
+    assert classifier.calibration_temperature == 2.0
+    assert result["top_class_probability"] == max(result["probabilities"].values())
+
+
+def test_local_transformer_sentiment_rejects_incomplete_artifact(tmp_path: Path) -> None:
+    checkpoint = tmp_path / "incomplete.pt"
+    (tmp_path / "tokenizer").mkdir()
+    torch.save({"mode": "head_only"}, checkpoint)
+
+    with pytest.raises(ValueError, match="incomplete"):
+        load_local_sentiment_classifier(checkpoint, tmp_path / "tokenizer", torch.device("cpu"))

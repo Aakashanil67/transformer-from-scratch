@@ -28,6 +28,27 @@ def test_train_sentiment_command_exposes_resume() -> None:
     assert args.resume is True
 
 
+def test_sentiment_matrix_command_accepts_configs_and_seeds() -> None:
+    args = build_parser().parse_args(
+        [
+            "run-sentiment-matrix",
+            "--config",
+            "baseline.toml",
+            "--config",
+            "lora.toml",
+            "--seeds",
+            "17",
+            "23",
+            "41",
+            "--device",
+            "cuda",
+        ]
+    )
+
+    assert args.config == ["baseline.toml", "lora.toml"]
+    assert args.seeds == [17, 23, 41]
+
+
 @pytest.mark.parametrize(
     "command",
     ["sample", "verify-gpt2", "train-sentiment", "evaluate-sentiment"],

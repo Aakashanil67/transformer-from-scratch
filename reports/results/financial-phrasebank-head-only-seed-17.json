@@ -1,8 +1,17 @@
 {
+  "artifacts": {
+    "evaluation": {
+      "sha256": "08210eb50bfc923647bc57af713a02e636f77f373957158e4cd9860913bb1484"
+    },
+    "model": {
+      "sha256": "c2b5f6176cf47a3b9548430266c41e0fe570ce7736e875193ef0423be2fbbccf"
+    }
+  },
   "config": {
     "data": {
       "dataset_revision": "8d3fe0c36d5feec6b3cc5e455b0fcb4820fb9964",
       "max_length": 64,
+      "split_seed": 17,
       "subset": "75Agree"
     },
     "evaluation": {
@@ -30,7 +39,7 @@
       "weight_decay": 0.01
     },
     "output": {
-      "directory": "../../artifacts/sentiment/head-only",
+      "directory": "../../artifacts/sentiment/head-only-seed-17",
       "result": "../../reports/results/financial-phrasebank-head-only-seed-17.json"
     }
   },
@@ -96,13 +105,18 @@
   },
   "error": null,
   "memory": {
-    "peak_cuda_allocated_bytes": 1009739776,
-    "peak_cuda_reserved_bytes": 1103101952
+    "peak_cuda_allocated_bytes": 1029140480,
+    "peak_cuda_reserved_bytes": 1105199104
   },
   "metrics": {
     "best_epoch": 3,
+    "calibration": {
+      "method": "temperature_scaling",
+      "validation_temperature": 0.9690191309202713
+    },
     "test": {
       "accuracy": 0.6795366795366795,
+      "brier_score": 0.4350863247854657,
       "confusion_matrix": [
         [
           0,
@@ -120,6 +134,7 @@
           37
         ]
       ],
+      "expected_calibration_error": 0.047283246234259654,
       "macro_f1": 0.39448575207715325,
       "macro_f1_bootstrap_ci": {
         "lower": 0.3630605576712352,
@@ -149,6 +164,7 @@
     },
     "validation": {
       "accuracy": 0.666023166023166,
+      "brier_score": 0.43933101996332996,
       "confusion_matrix": [
         [
           0,
@@ -166,6 +182,7 @@
           36
         ]
       ],
+      "expected_calibration_error": 0.05698511735122639,
       "macro_f1": 0.38375472335719335,
       "macro_f1_bootstrap_ci": {
         "lower": 0.356341963136606,
@@ -198,6 +215,7 @@
         "epoch": 1,
         "metrics": {
           "accuracy": 0.6158301158301158,
+          "brier_score": 0.5338868434222003,
           "confusion_matrix": [
             [
               0,
@@ -215,6 +233,7 @@
               6
             ]
           ],
+          "expected_calibration_error": 0.05536756011509985,
           "macro_f1": 0.2802632729817196,
           "macro_f1_bootstrap_ci": {
             "lower": 0.258537813215303,
@@ -247,6 +266,7 @@
         "epoch": 2,
         "metrics": {
           "accuracy": 0.6486486486486487,
+          "brier_score": 0.46492221214166773,
           "confusion_matrix": [
             [
               0,
@@ -264,6 +284,7 @@
               26
             ]
           ],
+          "expected_calibration_error": 0.05247045219174684,
           "macro_f1": 0.3549854680695059,
           "macro_f1_bootstrap_ci": {
             "lower": 0.3246546057765329,
@@ -296,6 +317,7 @@
         "epoch": 3,
         "metrics": {
           "accuracy": 0.666023166023166,
+          "brier_score": 0.43933101996332996,
           "confusion_matrix": [
             [
               0,
@@ -313,6 +335,7 @@
               36
             ]
           ],
+          "expected_calibration_error": 0.05698511735122639,
           "macro_f1": 0.38375472335719335,
           "macro_f1_bootstrap_ci": {
             "lower": 0.356341963136606,
@@ -362,12 +385,18 @@
     "trainable": 2307,
     "trainable_share": 1.853873987917997e-05
   },
-  "run_id": "financial-phrasebank-head-only",
-  "schema_version": 1,
+  "provenance": {
+    "config_sha256": "7e82e5c2b1fe2f66cecd00b74daa398b27794d271a1fd631d854ca33ba36b4f6",
+    "git_commit": "42630bc45381b03b0f55a768a213982fccc9cfe3",
+    "git_dirty": true,
+    "source_tree_sha256": "a4fc1f7c2231f05d2fb498683ee44a33bf8e0800f797b813817e45276c23c003"
+  },
+  "run_id": "financial-phrasebank-head-only-seed-17",
+  "schema_version": 2,
   "status": "completed",
-  "timestamp_utc": "2026-09-12T13:16:44.413585Z",
+  "timestamp_utc": "2026-09-12T14:57:37.474292Z",
   "timing": {
-    "examples_per_second": 17.37901165839666,
-    "train_seconds": 417.22740870000416
+    "examples_per_second": 16.96915563432142,
+    "train_seconds": 427.3047025000051
   }
 }

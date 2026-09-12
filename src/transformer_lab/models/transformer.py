@@ -143,13 +143,21 @@ class DecoderOnlyTransformer(nn.Module):
 
     def hidden_states(self, token_ids: Tensor) -> Tensor:
         """Return the final hidden state before the language-model head."""
+        return self.layer_states(token_ids)[-1]
+
+    def layer_states(self, token_ids: Tensor) -> tuple[Tensor, ...]:
+        """Expose GPT-2-compatible hidden-state boundaries for parity checks."""
         sequence_length = self._validate_token_ids(token_ids)
         positions = torch.arange(sequence_length, device=token_ids.device)
         hidden_states = self.token_embedding(token_ids) + self.position_embedding(positions)
         hidden_states = self.dropout(hidden_states)
-        for block in self.blocks:
+        states = [hidden_states]
+        for index, block in enumerate(self.blocks):
             hidden_states = block(hidden_states)
-        return self.ln_f(hidden_states)
+            if index < len(self.blocks) - 1:
+                states.append(hidden_states)
+        states.append(self.ln_f(hidden_states))
+        return tuple(states)
 
     @torch.no_grad()
     def generate(

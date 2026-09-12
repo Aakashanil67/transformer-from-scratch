@@ -22,6 +22,7 @@ class LocalSentimentClassifier:
     labels: tuple[str, ...]
     device: torch.device
     max_length: int
+    calibration_temperature: float = 1.0
 
     def classify(self, text: str) -> dict[str, object]:
         if not text.strip():
@@ -38,10 +39,16 @@ class LocalSentimentClassifier:
                 encoded["input_ids"].to(self.device),
                 attention_mask=encoded["attention_mask"].to(self.device),
             )
-            probabilities = logits.softmax(dim=-1)[0].cpu().tolist()
+            probabilities = (
+                (logits / self.calibration_temperature).softmax(dim=-1)[0].cpu().tolist()
+            )
         scores = dict(zip(self.labels, map(float, probabilities), strict=True))
         label = max(scores, key=scores.__getitem__)
-        return {"label": label, "confidence": scores[label], "probabilities": scores}
+        return {
+            "label": label,
+            "top_class_probability": scores[label],
+            "probabilities": scores,
+        }
 
 
 def load_local_sentiment_classifier(
@@ -56,12 +63,23 @@ def load_local_sentiment_classifier(
     if not tokenizer_dir.exists():
         raise FileNotFoundError("local sentiment tokenizer is missing")
     payload = torch.load(checkpoint, map_location="cpu", weights_only=True)
-    model = SentimentClassifier(
-        GPTConfig(**payload["architecture"]), num_labels=int(payload["num_labels"])
-    )
-    if payload.get("mode") == "lora":
-        inject_lora(model.backbone, LoRAConfig(**payload["lora"]))
-    model.load_state_dict(payload["state_dict"])
+    if not isinstance(payload, dict):
+        raise ValueError("sentiment artifact is incomplete: expected a mapping")
+    missing = {"architecture", "num_labels", "state_dict", "labels", "mode"} - payload.keys()
+    if missing:
+        names = ", ".join(sorted(missing))
+        raise ValueError(f"sentiment artifact is incomplete: missing {names}")
+    try:
+        model = SentimentClassifier(
+            GPTConfig(**payload["architecture"]), num_labels=int(payload["num_labels"])
+        )
+        if payload.get("mode") == "lora":
+            if "lora" not in payload:
+                raise ValueError("missing lora configuration")
+            inject_lora(model.backbone, LoRAConfig(**payload["lora"]))
+        model.load_state_dict(payload["state_dict"])
+    except (KeyError, TypeError, ValueError, RuntimeError) as error:
+        raise ValueError("sentiment artifact is incompatible with the model schema") from error
     model.to(device).eval()
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_dir, local_files_only=True)
     if tokenizer.pad_token is None:
@@ -72,6 +90,7 @@ def load_local_sentiment_classifier(
         labels=tuple(payload["labels"]),
         device=device,
         max_length=max_length,
+        calibration_temperature=float(payload.get("calibration_temperature", 1.0)),
     )
 
 
@@ -97,7 +116,7 @@ def classify_tfidf(artifact: tuple[Any, Any], text: str) -> dict[str, object]:
     }
     return {
         "label": str(label),
-        "confidence": max(scores.values()),
+        "top_class_probability": max(scores.values()),
         "probabilities": scores,
     }
 
