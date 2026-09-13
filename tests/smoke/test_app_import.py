@@ -16,3 +16,45 @@ def test_app_returns_test_metrics_from_completed_record() -> None:
     metrics = {"macro_f1": 0.8, "accuracy": 0.9}
 
     assert _completed_test_metrics({"status": "completed", "metrics": {"test": metrics}}) == metrics
+
+
+def test_app_ignores_malformed_completed_test_metrics() -> None:
+    from app.playground import _completed_test_metrics
+
+    assert _completed_test_metrics({"status": "completed", "metrics": {"test": {}}}) is None
+    assert (
+        _completed_test_metrics({"status": "completed", "metrics": {"test": {"macro_f1": "0.8"}}})
+        is None
+    )
+
+
+def test_app_uses_a_hash_verified_artifact_only(tmp_path) -> None:
+    import hashlib
+    import json
+
+    from app.playground import _verified_artifact
+
+    model = tmp_path / "model.pt"
+    model.write_bytes(b"original")
+    digest = hashlib.sha256(model.read_bytes()).hexdigest()
+    result = tmp_path / "result.json"
+    result.write_text(
+        json.dumps(
+            {
+                "schema_version": 2,
+                "status": "completed",
+                "metrics": {},
+                "artifacts": {"model": {"sha256": digest}},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    verified, error = _verified_artifact(result, (tmp_path,), "model")
+    assert verified == model
+    assert error is None
+
+    model.write_bytes(b"changed")
+    verified, error = _verified_artifact(result, (tmp_path,), "model")
+    assert verified is None
+    assert error is not None and "hash" in error

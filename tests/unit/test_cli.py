@@ -49,6 +49,31 @@ def test_sentiment_matrix_command_accepts_configs_and_seeds() -> None:
     assert args.seeds == [17, 23, 41]
 
 
+def test_selection_and_frozen_evaluation_commands_require_their_manifests() -> None:
+    selection = build_parser().parse_args(
+        ["select-sentiment", "--protocol", "configs/sentiment/v3-protocol.toml"]
+    )
+    evaluation = build_parser().parse_args(
+        [
+            "evaluate-matrix",
+            "--selection",
+            "reports/results/v3/selection.json",
+            "--seeds",
+            "17",
+            "23",
+            "41",
+            "--device",
+            "cpu",
+            "--output",
+            "comparison.json",
+        ]
+    )
+
+    assert selection.command == "select-sentiment"
+    assert evaluation.command == "evaluate-matrix"
+    assert evaluation.seeds == [17, 23, 41]
+
+
 @pytest.mark.parametrize(
     "command",
     ["sample", "verify-gpt2", "train-sentiment", "evaluate-sentiment"],
@@ -85,3 +110,11 @@ def test_main_reports_a_domain_error_without_a_traceback(monkeypatch, capsys) ->
 
     assert main(["sample", "--config", "config.toml"]) == 2
     assert "missing checkpoint" in capsys.readouterr().err
+
+
+def test_main_dispatches_selection(monkeypatch, tmp_path, capsys) -> None:
+    expected = tmp_path / "selection.json"
+    monkeypatch.setattr("transformer_lab.cli.select_sentiment", lambda *args, **kwargs: expected)
+
+    assert main(["select-sentiment", "--protocol", "protocol.toml"]) == 0
+    assert str(expected) in capsys.readouterr().out

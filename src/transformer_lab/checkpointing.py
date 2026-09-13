@@ -18,20 +18,24 @@ def save_checkpoint(
     scheduler: Any = None,
     scaler: Any = None,
     step: int,
+    optimizer_step: int | None = None,
     history: dict[str, Any] | None = None,
     generators: dict[str, torch.Generator] | None = None,
     config: dict[str, Any] | None = None,
+    metadata: dict[str, Any] | None = None,
 ) -> Path:
     """Save all state needed to resume a local run."""
     payload: dict[str, Any] = {
         "model": model.state_dict(),
         "optimizer": optimizer.state_dict(),
         "step": step,
+        "optimizer_step": step if optimizer_step is None else optimizer_step,
         "history": history or {},
         "config": config or {},
         "torch_rng_state": torch.get_rng_state(),
         "python_rng_state": random.getstate(),
     }
+    payload.update(metadata or {})
     if scheduler is not None:
         payload["scheduler"] = scheduler.state_dict()
     if scaler is not None:

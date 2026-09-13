@@ -24,6 +24,7 @@ class ExperimentRecord:
     environment: dict[str, Any] = field(default_factory=dict)
     provenance: dict[str, Any] = field(default_factory=dict)
     artifacts: dict[str, Any] = field(default_factory=dict)
+    manifest: dict[str, Any] = field(default_factory=dict)
     parameters: dict[str, Any] = field(default_factory=dict)
     timing: dict[str, Any] = field(default_factory=dict)
     memory: dict[str, Any] = field(default_factory=dict)
@@ -37,6 +38,8 @@ class ExperimentRecord:
     def __post_init__(self) -> None:
         if not self.run_id.strip():
             raise ValueError("run_id must not be empty")
+        if self.schema_version not in {2, 3}:
+            raise ValueError("schema_version must be 2 or 3")
         if self.status not in {"completed", "failed", "unavailable"}:
             raise ValueError("status must be completed, failed, or unavailable")
         if self.status == "completed" and self.metrics is None:
@@ -47,13 +50,17 @@ class ExperimentRecord:
     def to_dict(self) -> dict[str, Any]:
         """Return a stable JSON-compatible mapping."""
         payload = {item.name: _json_value(getattr(self, item.name)) for item in fields(self)}
-        return json.loads(json.dumps(payload, sort_keys=True, separators=(",", ":")))
+        return json.loads(
+            json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False)
+        )
 
     def write(self, path: Path) -> Path:
         """Write this record atomically enough for a local experiment."""
         path.parent.mkdir(parents=True, exist_ok=True)
         temporary = path.with_suffix(path.suffix + ".tmp")
-        temporary.write_text(json.dumps(self.to_dict(), indent=2) + "\n", encoding="utf-8")
+        temporary.write_text(
+            json.dumps(self.to_dict(), indent=2, allow_nan=False) + "\n", encoding="utf-8"
+        )
         temporary.replace(path)
         return path
 

@@ -3,6 +3,7 @@ from collections import Counter
 import pytest
 
 from transformer_lab.data.financial_phrasebank import (
+    evaluation_example_ids,
     parse_phrasebank_lines,
     split_manifest,
     split_phrasebank,
@@ -91,3 +92,14 @@ def test_split_summary_is_compact_and_content_addressed() -> None:
     assert len(summary["sha256"]) == 64
     assert all("sha256" in summary[name] for name in ("train", "validation", "test"))
     assert "Profit rose" not in repr(summary)
+
+
+def test_evaluation_example_ids_keep_duplicate_occurrences_distinct() -> None:
+    examples = parse_phrasebank_lines(["Repeated@positive", "Repeated@positive", "Other@neutral"])
+
+    ids = evaluation_example_ids(examples)
+
+    assert ids[0].endswith(":0")
+    assert ids[1].endswith(":1")
+    assert ids[0].split(":")[0] == ids[1].split(":")[0]
+    assert ids[2].endswith(":0")

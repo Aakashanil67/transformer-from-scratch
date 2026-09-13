@@ -1,4 +1,5 @@
 import json
+import math
 from pathlib import Path
 
 import pytest
@@ -98,3 +99,33 @@ def test_local_transformer_sentiment_rejects_incomplete_artifact(tmp_path: Path)
 
     with pytest.raises(ValueError, match="incomplete"):
         load_local_sentiment_classifier(checkpoint, tmp_path / "tokenizer", torch.device("cpu"))
+
+
+def test_local_transformer_sentiment_rejects_non_finite_temperature(tmp_path: Path) -> None:
+    tokenizer_dir = tmp_path / "tokenizer"
+    tokenizer_dir.mkdir()
+    (tokenizer_dir / "vocab.json").write_text(
+        json.dumps({"a": 0, "b": 1, "<|endoftext|>": 2}), encoding="utf-8"
+    )
+    (tokenizer_dir / "merges.txt").write_text("#version: 0.2\n", encoding="utf-8")
+    GPT2Tokenizer(
+        vocab_file=str(tokenizer_dir / "vocab.json"),
+        merges_file=str(tokenizer_dir / "merges.txt"),
+        unk_token="<|endoftext|>",
+    ).save_pretrained(tokenizer_dir)
+    config = GPTConfig(vocab_size=3, block_size=4, n_layer=1, n_head=1, n_embd=8)
+    checkpoint = tmp_path / "model.pt"
+    torch.save(
+        {
+            "architecture": config.__dict__,
+            "state_dict": SentimentClassifier(config, num_labels=3).state_dict(),
+            "mode": "head_only",
+            "labels": ["negative", "neutral", "positive"],
+            "num_labels": 3,
+            "calibration_temperature": math.nan,
+        },
+        checkpoint,
+    )
+
+    with pytest.raises(ValueError, match="temperature"):
+        load_local_sentiment_classifier(checkpoint, tokenizer_dir, torch.device("cpu"))

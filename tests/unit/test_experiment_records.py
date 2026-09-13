@@ -1,4 +1,5 @@
 import json
+import math
 from types import MappingProxyType
 
 import pytest
@@ -60,6 +61,13 @@ def test_record_rejects_an_unknown_status() -> None:
 def test_completed_record_requires_metrics() -> None:
     with pytest.raises(ValueError, match="metrics"):
         ExperimentRecord(run_id="demo", status="completed", metrics=None)
+
+
+def test_record_rejects_non_finite_json_numbers() -> None:
+    record = ExperimentRecord(run_id="demo", status="completed", metrics={"score": math.nan})
+
+    with pytest.raises(ValueError, match="Out of range float values"):
+        record.to_dict()
 
 
 def test_failed_record_removes_absolute_paths_from_public_message() -> None:

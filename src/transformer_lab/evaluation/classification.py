@@ -16,7 +16,9 @@ from sklearn.metrics import (
 def apply_temperature(logits: np.ndarray, temperature: float) -> np.ndarray:
     if logits.ndim != 2:
         raise ValueError("logits must have shape (examples, classes)")
-    if temperature <= 0:
+    if not np.all(np.isfinite(logits)):
+        raise ValueError("logits must be finite")
+    if not np.isfinite(temperature) or temperature <= 0:
         raise ValueError("temperature must be positive")
     scaled = logits.astype(np.float64) / temperature
     scaled -= scaled.max(axis=1, keepdims=True)
@@ -28,6 +30,8 @@ def fit_temperature(logits: np.ndarray, targets: np.ndarray) -> float:
     """Choose a scalar temperature on validation negative log-likelihood."""
     if logits.ndim != 2 or targets.shape != (logits.shape[0],):
         raise ValueError("targets must align with two-dimensional logits")
+    if not np.all(np.isfinite(logits)):
+        raise ValueError("logits must be finite")
     if np.any(targets < 0) or np.any(targets >= logits.shape[1]):
         raise ValueError("targets contain an out-of-range class")
     candidates = np.geomspace(0.05, 20.0, num=2_000)
@@ -45,6 +49,7 @@ def paired_bootstrap_difference(
     reference: np.ndarray,
     *,
     labels: Sequence[int | str],
+    groups: np.ndarray | None = None,
     samples: int = 10_000,
     seed: int = 17,
 ) -> dict[str, object]:
@@ -55,6 +60,8 @@ def paired_bootstrap_difference(
         raise ValueError("paired predictions must be non-empty one-dimensional arrays")
     if samples <= 0:
         raise ValueError("samples must be positive")
+    if groups is not None and (groups.ndim != 1 or groups.shape != targets.shape):
+        raise ValueError("bootstrap groups must align with one-dimensional predictions")
     label_list = list(labels)
 
     label_index = {label: index for index, label in enumerate(label_list)}
@@ -75,9 +82,19 @@ def paired_bootstrap_difference(
     all_rows = np.arange(len(targets))
     observed = score(challenger, all_rows) - score(reference, all_rows)
     rng = np.random.default_rng(seed)
+    group_values = None if groups is None else np.unique(groups)
+    group_rows = (
+        None
+        if group_values is None
+        else [np.flatnonzero(groups == value) for value in group_values]
+    )
     differences = np.empty(samples, dtype=float)
     for index in range(samples):
-        rows = rng.integers(0, len(targets), size=len(targets))
+        if group_rows is None:
+            rows = rng.integers(0, len(targets), size=len(targets))
+        else:
+            selected = rng.integers(0, len(group_rows), size=len(group_rows))
+            rows = np.concatenate([group_rows[group] for group in selected])
         differences[index] = score(challenger, rows) - score(reference, rows)
     lower, upper = np.quantile(differences, [0.025, 0.975])
     return {
@@ -87,6 +104,8 @@ def paired_bootstrap_difference(
         "ties": int(np.sum(differences == 0)),
         "losses": int(np.sum(differences < 0)),
         "samples": samples,
+        "resampling_unit": "duplicate_group" if groups is not None else "row",
+        "group_count": int(len(group_values)) if group_values is not None else len(targets),
     }
 
 
@@ -168,18 +187,33 @@ def classification_metrics(
         probabilities = np.asarray(probabilities, dtype=float)
         if probabilities.shape != (len(targets), len(label_list)):
             raise ValueError("probabilities must have shape (examples, labels)")
-        if np.any(probabilities < 0) or not np.allclose(probabilities.sum(axis=1), 1.0):
-            raise ValueError("probability rows must be non-negative and sum to one")
+        if not np.all(np.isfinite(probabilities)):
+            raise ValueError("probability rows must be finite")
+        if np.any(probabilities < 0) or np.any(probabilities > 1):
+            raise ValueError("probability rows must be bounded between zero and one")
+        if not np.allclose(probabilities.sum(axis=1), 1.0, rtol=0, atol=1e-6):
+            raise ValueError("probability rows must sum to one")
         label_index = {label: index for index, label in enumerate(label_list)}
         target_indices = np.asarray([label_index[target] for target in targets])
+        if np.issubdtype(predictions.dtype, np.integer):
+            predicted_indices = predictions.astype(int)
+        else:
+            try:
+                predicted_indices = np.asarray(
+                    [label_index[prediction] for prediction in predictions]
+                )
+            except KeyError as error:
+                raise ValueError("predictions contain an unknown class label") from error
+        if not np.array_equal(probabilities.argmax(axis=1), predicted_indices):
+            raise ValueError("probabilities disagree with predicted classes")
         observed = np.eye(len(label_list))[target_indices]
         result["brier_score"] = float(np.mean(np.sum((probabilities - observed) ** 2, axis=1)))
         confidence = probabilities.max(axis=1)
         correct = predictions == targets
         ece = 0.0
-        for lower in np.linspace(0.0, 0.9, 10):
-            upper = lower + 0.1
-            members = (confidence > lower) & (confidence <= upper)
+        bin_ids = np.minimum(np.floor(confidence * 10).astype(int), 9)
+        for bin_id in range(10):
+            members = bin_ids == bin_id
             if np.any(members):
                 ece += float(members.mean()) * abs(
                     float(correct[members].mean()) - float(confidence[members].mean())

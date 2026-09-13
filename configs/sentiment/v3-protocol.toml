@@ -1,0 +1,109 @@
+[protocol]
+name = "financial-phrasebank-v3-validation-selected"
+dataset_revision = "8d3fe0c36d5feec6b3cc5e455b0fcb4820fb9964"
+subset = "75Agree"
+split_seed = 17
+max_length = 64
+epochs = 3
+batch_size = 1
+gradient_accumulation_steps = 16
+selection_seed = 17
+final_seeds = [17, 23, 41]
+
+# Candidate summaries are validation-only JSON files produced by the candidate
+# training job. The selector refuses summaries containing test fields.
+[[candidates]]
+candidate_id = "head-only-lr-1e-3"
+method = "head_only"
+order = 0
+learning_rate = 0.001
+config = "head-only-gpt2-small.toml"
+summary = "../../artifacts/selection/v3/head-only-lr-1e-3/validation-summary.json"
+
+[[candidates]]
+candidate_id = "head-only-lr-5e-3"
+method = "head_only"
+order = 1
+learning_rate = 0.005
+config = "head-only-gpt2-small.toml"
+summary = "../../artifacts/selection/v3/head-only-lr-5e-3/validation-summary.json"
+
+[[candidates]]
+candidate_id = "head-only-lr-1e-2"
+method = "head_only"
+order = 2
+learning_rate = 0.01
+config = "head-only-gpt2-small.toml"
+summary = "../../artifacts/selection/v3/head-only-lr-1e-2/validation-summary.json"
+
+[[candidates]]
+candidate_id = "lora-r4-lr-5e-5"
+method = "lora"
+order = 0
+learning_rate = 0.00005
+config = "lora-gpt2-small.toml"
+summary = "../../artifacts/selection/v3/lora-r4-lr-5e-5/validation-summary.json"
+
+[[candidates]]
+candidate_id = "lora-r4-lr-2e-4"
+method = "lora"
+order = 1
+learning_rate = 0.0002
+config = "lora-gpt2-small.toml"
+summary = "../../artifacts/selection/v3/lora-r4-lr-2e-4/validation-summary.json"
+
+[[candidates]]
+candidate_id = "lora-r4-lr-1e-3"
+method = "lora"
+order = 2
+learning_rate = 0.001
+config = "lora-gpt2-small.toml"
+summary = "../../artifacts/selection/v3/lora-r4-lr-1e-3/validation-summary.json"
+
+[[candidates]]
+candidate_id = "full-lr-5e-6"
+method = "full"
+order = 0
+learning_rate = 0.000005
+config = "full-gpt2-small.toml"
+summary = "../../artifacts/selection/v3/full-lr-5e-6/validation-summary.json"
+
+[[candidates]]
+candidate_id = "full-lr-1e-5"
+method = "full"
+order = 1
+learning_rate = 0.00001
+config = "full-gpt2-small.toml"
+summary = "../../artifacts/selection/v3/full-lr-1e-5/validation-summary.json"
+
+[[candidates]]
+candidate_id = "full-lr-2e-5"
+method = "full"
+order = 2
+learning_rate = 0.00002
+config = "full-gpt2-small.toml"
+summary = "../../artifacts/selection/v3/full-lr-2e-5/validation-summary.json"
+
+[[candidates]]
+candidate_id = "tfidf-c-0.1"
+method = "baseline"
+order = 0
+c = 0.1
+config = "baseline.toml"
+summary = "../../artifacts/selection/v3/tfidf-c-0.1/validation-summary.json"
+
+[[candidates]]
+candidate_id = "tfidf-c-1"
+method = "baseline"
+order = 1
+c = 1.0
+config = "baseline.toml"
+summary = "../../artifacts/selection/v3/tfidf-c-1/validation-summary.json"
+
+[[candidates]]
+candidate_id = "tfidf-c-10"
+method = "baseline"
+order = 2
+c = 10.0
+config = "baseline.toml"
+summary = "../../artifacts/selection/v3/tfidf-c-10/validation-summary.json"

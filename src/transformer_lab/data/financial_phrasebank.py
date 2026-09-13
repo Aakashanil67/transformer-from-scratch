@@ -170,6 +170,17 @@ def split_manifest(splits: PhraseBankSplits) -> dict[str, list[dict[str, str]]]:
     }
 
 
+def evaluation_example_ids(examples: Sequence[Example]) -> list[str]:
+    """Return stable row IDs using the duplicate group and occurrence order."""
+    occurrences: Counter[str] = Counter()
+    result: list[str] = []
+    for example in examples:
+        occurrence = occurrences[example.group_id]
+        result.append(f"{example.group_id}:{occurrence}")
+        occurrences[example.group_id] += 1
+    return result
+
+
 def split_summary(splits: PhraseBankSplits) -> dict[str, object]:
     """Return compact counts and fingerprints for a public result record."""
     manifest = split_manifest(splits)

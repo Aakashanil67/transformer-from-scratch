@@ -33,6 +33,11 @@ class SentimentClassifier(nn.Module):
                 raise ValueError("attention_mask shape must match input_ids shape")
             if attention_mask.dtype not in (torch.int32, torch.int64, torch.bool):
                 raise ValueError("attention_mask must be boolean or integer")
+            binary = attention_mask.to(torch.bool)
+            if torch.any((attention_mask != 0) & (attention_mask != 1)) or torch.any(
+                binary[:, 1:] & ~binary[:, :-1]
+            ):
+                raise ValueError("attention_mask must be right-padded binary")
         hidden = self.backbone.hidden_states(input_ids)
         if attention_mask is None:
             pooled = hidden[:, -1, :]

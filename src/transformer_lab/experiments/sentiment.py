@@ -9,7 +9,7 @@ import random
 import re
 import time
 from collections import Counter
-from dataclasses import asdict, replace
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +25,7 @@ from transformer_lab.checkpointing import load_checkpoint, save_checkpoint
 from transformer_lab.config import GPTConfig
 from transformer_lab.config_io import ExperimentConfig, effective_config
 from transformer_lab.data.financial_phrasebank import (
+    evaluation_example_ids,
     load_phrasebank,
     split_phrasebank,
     split_summary,
@@ -34,6 +35,7 @@ from transformer_lab.evaluation.classification import (
     classification_metrics,
     fit_temperature,
 )
+from transformer_lab.experiments.manifests import build_manifest, resolve_run
 from transformer_lab.experiments.records import ExperimentRecord
 from transformer_lab.experiments.runtime import (
     environment_metadata,
@@ -55,28 +57,7 @@ def sentiment_seeds(config: ExperimentConfig, seeds: list[int]) -> list[Experime
     """Derive isolated run paths while leaving the dataset partition unchanged."""
     if not seeds or len(set(seeds)) != len(seeds):
         raise ValueError("seeds must be a non-empty list without duplicates")
-    result_path = Path(config.output["result"])
-    directory = Path(config.output.get("directory", "artifacts/sentiment"))
-    runs = []
-    for seed in seeds:
-        name = result_path.name
-        if "seed-" in name:
-            name = re.sub(r"seed-\d+", f"seed-{seed}", name)
-        else:
-            name = f"{result_path.stem}-seed-{seed}{result_path.suffix}"
-        runs.append(
-            replace(
-                config,
-                data={**dict(config.data), "split_seed": int(config.data.get("split_seed", 17))},
-                evaluation={**dict(config.evaluation), "seed": seed},
-                output={
-                    **dict(config.output),
-                    "result": str(result_path.with_name(name)),
-                    "directory": str(directory.with_name(f"{directory.name}-seed-{seed}")),
-                },
-            )
-        )
-    return runs
+    return [resolve_run(config, seed=seed) for seed in seeds]
 
 
 def _sha256(path: Path) -> str:
@@ -88,14 +69,18 @@ def _sha256(path: Path) -> str:
 
 
 def _unavailable(config: ExperimentConfig, device: torch.device, message: str) -> Path:
+    provenance = source_provenance(config.source_path)
     record = ExperimentRecord(
         run_id=config.experiment["name"],
         status="unavailable",
         model={"mode": config.model.get("mode")},
         config=effective_config(config),
         environment=environment_metadata(device),
+        provenance=provenance,
+        manifest=build_manifest(config, provenance=provenance),
         metrics=None,
         error={"type": "PreflightError", "message": message},
+        schema_version=3,
     )
     result_path = Path(config.output["result"])
     record.write(result_path)
@@ -119,27 +104,31 @@ def _predict(
     loader: DataLoader[tuple[Tensor, Tensor, Tensor]],
     device: torch.device,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    was_training = model.training
     model.eval()
     targets: list[Tensor] = []
     predictions: list[Tensor] = []
     probabilities: list[Tensor] = []
     raw_logits: list[Tensor] = []
-    with torch.no_grad():
-        for input_ids, attention_mask, labels in loader:
-            logits, _ = model(
-                input_ids.to(device),
-                attention_mask=attention_mask.to(device),
-            )
-            targets.append(labels)
-            predictions.append(logits.argmax(dim=-1).cpu())
-            probabilities.append(logits.softmax(dim=-1).cpu())
-            raw_logits.append(logits.cpu())
-    return (
-        torch.cat(targets).numpy(),
-        torch.cat(predictions).numpy(),
-        torch.cat(probabilities).numpy(),
-        torch.cat(raw_logits).numpy(),
-    )
+    try:
+        with torch.no_grad():
+            for input_ids, attention_mask, labels in loader:
+                logits, _ = model(
+                    input_ids.to(device),
+                    attention_mask=attention_mask.to(device),
+                )
+                targets.append(labels)
+                predictions.append(logits.argmax(dim=-1).cpu())
+                probabilities.append(logits.softmax(dim=-1).cpu())
+                raw_logits.append(logits.cpu())
+        return (
+            torch.cat(targets).numpy(),
+            torch.cat(predictions).numpy(),
+            torch.cat(probabilities).numpy(),
+            torch.cat(raw_logits).numpy(),
+        )
+    finally:
+        model.train(was_training)
 
 
 def _train_transformer(
@@ -248,9 +237,14 @@ def _train_transformer(
                 config=checkpoint_config,
             )
         model.train()
-    if best_model_path is not None and best_model_path.exists():
-        best = torch.load(best_model_path, map_location=device, weights_only=True)
-        model.load_state_dict(best["state_dict"])
+    if best_model_path is not None:
+        if not best_model_path.exists():
+            raise FileNotFoundError("selected best sentiment checkpoint is missing")
+        try:
+            best = torch.load(best_model_path, map_location=device, weights_only=True)
+            model.load_state_dict(best["state_dict"])
+        except (OSError, KeyError, RuntimeError, TypeError) as error:
+            raise ValueError("selected best sentiment checkpoint is corrupt") from error
     best_validation = next(
         candidate["metrics"] for candidate in candidates if candidate["epoch"] == best_epoch
     )
@@ -271,20 +265,25 @@ def run_sentiment_experiment(
     resume: bool = False,
 ) -> Path:
     """Run one sentiment mode and retain a diagnostic record after a CUDA OOM."""
+    config = resolve_run(config, seed=seed)
     try:
-        return _execute_sentiment_experiment(config, device=device, seed=seed, resume=resume)
+        return _execute_sentiment_experiment(config, device=device, resume=resume)
     except torch.OutOfMemoryError as error:
         if device.type != "cuda":
             raise
+        provenance = source_provenance(config.source_path)
         record = ExperimentRecord(
             run_id=str(config.experiment["name"]),
             status="failed",
             config=effective_config(config),
             model={"mode": config.model.get("mode")},
             environment=environment_metadata(device),
+            provenance=provenance,
+            manifest=build_manifest(config, provenance=provenance),
             memory=peak_memory(device),
             metrics=None,
             error={"type": type(error).__name__, "message": str(error)},
+            schema_version=3,
         )
         result_path = Path(config.output["result"])
         record.write(result_path)
@@ -401,8 +400,18 @@ def _execute_sentiment_experiment(
     )
     validation_targets, _, _, validation_logits = _predict(model, validation_loader, device)
     calibration_temperature = fit_temperature(validation_logits, validation_targets)
-    targets, predictions, _, test_logits = _predict(model, test_loader, device)
+    targets, predictions, uncalibrated_probabilities, test_logits = _predict(
+        model, test_loader, device
+    )
     probabilities = apply_temperature(test_logits, calibration_temperature)
+    uncalibrated_test = classification_metrics(
+        targets,
+        predictions,
+        labels=list(range(len(LABELS))),
+        probabilities=uncalibrated_probabilities,
+        bootstrap_samples=int(config.evaluation.get("bootstrap_samples", 1_000)),
+        seed=run_seed,
+    )
     result["test"] = classification_metrics(
         targets,
         predictions,
@@ -414,10 +423,14 @@ def _execute_sentiment_experiment(
     counts = parameter_report(model)
     checkpoint = output_directory / "model.pt"
     checkpoint_payload = {
+        "schema_version": 2,
         "state_dict": model.state_dict(),
         "architecture": asdict(model.backbone.config),
         "mode": mode,
         "revision": revision,
+        "tokenizer_id": config.model.get("base_model", "openai-community/gpt2"),
+        "tokenizer_revision": revision,
+        "max_length": max_length,
         "labels": LABELS,
         "num_labels": len(LABELS),
         "calibration_temperature": calibration_temperature,
@@ -438,14 +451,29 @@ def _execute_sentiment_experiment(
             "attention_mask": encoded[2][1],
             "targets": encoded[2][2],
             "predictions": torch.from_numpy(predictions),
+            "uncalibrated_probabilities": torch.from_numpy(uncalibrated_probabilities),
             "probabilities": torch.from_numpy(probabilities),
+            "labels": LABELS,
+            "example_ids": evaluation_example_ids(splits.test),
         },
         output_directory / "evaluation.pt",
     )
     model_sha256 = file_sha256(checkpoint)
     evaluation_sha256 = file_sha256(output_directory / "evaluation.pt")
+    provenance = source_provenance(config.source_path)
+    artifacts = {
+        "model": {"path": "model.pt", "sha256": model_sha256},
+        "evaluation": {
+            "path": "evaluation.pt",
+            "sha256": evaluation_sha256,
+        },
+    }
+    data_identity = {
+        "split": split_summary(splits),
+        "ordered_evaluation_rows": len(splits.test),
+    }
     record = ExperimentRecord(
-        run_id=f"{config.experiment['name']}-seed-{run_seed}",
+        run_id=str(config.experiment["name"]),
         status="completed",
         model={"id": config.model.get("base_model"), "revision": revision, "mode": mode},
         config=effective_config(config),
@@ -461,11 +489,18 @@ def _execute_sentiment_experiment(
         },
         optimization=config.optimization,
         environment=environment_metadata(device),
-        provenance=source_provenance(config.source_path),
-        artifacts={
-            "model": {"sha256": model_sha256},
-            "evaluation": {"sha256": evaluation_sha256},
-        },
+        provenance=provenance,
+        artifacts=artifacts,
+        manifest=build_manifest(
+            config,
+            provenance=provenance,
+            data_identity=data_identity,
+            evaluation={
+                "seed": run_seed,
+                "bootstrap_samples": config.evaluation.get("bootstrap_samples", 1_000),
+            },
+            artifacts=artifacts,
+        ),
         parameters={
             "total": counts.total,
             "trainable": counts.trainable,
@@ -486,8 +521,17 @@ def _execute_sentiment_experiment(
             "calibration": {
                 "method": "temperature_scaling",
                 "validation_temperature": calibration_temperature,
+                "before": {
+                    key: uncalibrated_test[key]
+                    for key in ("brier_score", "expected_calibration_error")
+                },
+                "after": {
+                    key: result["test"][key]
+                    for key in ("brier_score", "expected_calibration_error")
+                },
             },
         },
+        schema_version=3,
     )
     result_path = Path(config.output["result"])
     record.write(result_path)
@@ -549,6 +593,7 @@ def _metrics_match(expected: Any, observed: Any) -> bool:
 
 def evaluate_sentiment_run(config: ExperimentConfig, device: torch.device) -> Path:
     """Recompute test metrics from a saved model and frozen evaluation inputs."""
+    config = resolve_run(config)
     result_path = Path(config.output["result"])
     if not result_path.exists():
         raise FileNotFoundError(f"sentiment result does not exist: {result_path}")

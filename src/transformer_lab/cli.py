@@ -9,9 +9,11 @@ from pathlib import Path
 
 from transformer_lab import __version__
 from transformer_lab.commands import (
+    evaluate_matrix,
     evaluate_sentiment,
     run_sentiment_matrix,
     sample,
+    select_sentiment,
     train_lm,
     train_sentiment,
     verify_gpt2,
@@ -36,6 +38,15 @@ def build_parser() -> argparse.ArgumentParser:
     matrix.add_argument("--device", choices=("auto", "cpu", "cuda"), default="cuda")
     matrix.add_argument("--output", default="reports/results/financial-phrasebank-comparison.json")
     matrix.add_argument("--resume", action="store_true")
+    selection = commands.add_parser("select-sentiment")
+    selection.add_argument("--protocol", required=True)
+    selection.add_argument("--output", default=None)
+    frozen = commands.add_parser("evaluate-matrix")
+    frozen.add_argument("--selection", required=True)
+    frozen.add_argument("--seeds", nargs="+", type=int, required=True)
+    frozen.add_argument("--device", choices=("auto", "cpu", "cuda"), default="cuda")
+    frozen.add_argument("--output", required=True)
+    frozen.add_argument("--resume", action="store_true")
     return parser
 
 
@@ -65,6 +76,20 @@ def main(argv: Sequence[str] | None = None) -> int:
         elif args.command == "evaluate-sentiment":
             result = evaluate_sentiment(Path(args.config), device_name=args.device)
             print(f"Verified {result}")
+        elif args.command == "select-sentiment":
+            result = select_sentiment(
+                Path(args.protocol), output=Path(args.output) if args.output else None
+            )
+            print(f"Wrote {result}")
+        elif args.command == "evaluate-matrix":
+            result = evaluate_matrix(
+                Path(args.selection),
+                seeds=args.seeds,
+                device_name=args.device,
+                output=Path(args.output),
+                resume=args.resume,
+            )
+            print(f"Wrote {result}")
         else:
             result = run_sentiment_matrix(
                 [Path(path) for path in args.config],

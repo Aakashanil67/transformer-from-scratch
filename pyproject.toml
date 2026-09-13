@@ -44,7 +44,9 @@ experiments = [
     "joblib>=1.4,<2",
 ]
 app = [
+    "scikit-learn>=1.5,<2",
     "streamlit>=1.40,<2",
+    "transformers>=4.50,<6",
     "joblib>=1.4,<2",
 ]
 all = [

@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 import streamlit as st
 
 from transformer_lab.commands import resolve_device
+from transformer_lab.experiments.manifests import verify_run
 from transformer_lab.inference.generation import load_local_generator
 from transformer_lab.inference.sentiment import (
     classify_tfidf,
@@ -68,12 +70,36 @@ def _completed_test_metrics(record: dict) -> dict | None:
     metrics = record.get("metrics")
     if not isinstance(metrics, dict) or not isinstance(metrics.get("test"), dict):
         return None
-    return metrics["test"]
+    test_metrics = metrics["test"]
+    for key in ("macro_f1", "accuracy"):
+        value = test_metrics.get(key)
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, int | float)
+            or not math.isfinite(value)
+        ):
+            return None
+    return test_metrics
 
 
-def _first_existing(paths: tuple[Path, ...]) -> Path:
-    """Use the matrix artefact when present, with a direct-run fallback."""
-    return next((path for path in paths if path.exists()), paths[0])
+def _verified_artifact(
+    result_path: Path, artifact_roots: tuple[Path, ...], artifact_name: str
+) -> tuple[Path | None, str | None]:
+    """Return only an artefact whose result-record hash verifies."""
+    if not result_path.exists():
+        return None, f"The recorded result is missing: {result_path}"
+    errors: list[str] = []
+    for artifact_root in artifact_roots:
+        try:
+            verified = verify_run(result_path, artifact_root=artifact_root)
+        except (FileNotFoundError, OSError, ValueError) as error:
+            errors.append(str(error))
+            continue
+        path = verified["artifact_paths"].get(artifact_name)
+        if isinstance(path, Path):
+            return path, None
+    detail = errors[-1] if errors else "no matching artefact was declared"
+    return None, f"The recorded {artifact_name} artefact could not be verified: {detail}"
 
 
 st.set_page_config(page_title="Transformer lab", layout="centered")
@@ -137,7 +163,12 @@ with tab_sentiment:
     method = st.selectbox("Method", options=("LoRA GPT-2", "TF-IDF reference"))
     transformer_method = method == "LoRA GPT-2"
     result_path = LORA_RESULT if transformer_method else TFIDF_RESULT
-    checkpoint_path = _first_existing(LORA_CHECKPOINTS) if transformer_method else TFIDF_CHECKPOINT
+    artifact_roots = (
+        tuple(path.parent for path in LORA_CHECKPOINTS)
+        if transformer_method
+        else (TFIDF_CHECKPOINT.parent,)
+    )
+    checkpoint_path, checkpoint_error = _verified_artifact(result_path, artifact_roots, "model")
     sentiment_record = _result(result_path)
     comparison_record = _result(COMPARISON_RESULT)
     test_metrics = _completed_test_metrics(sentiment_record)
@@ -153,7 +184,12 @@ with tab_sentiment:
             f"accuracy {test_metrics['accuracy']:.4f}."
         )
         if transformer_method:
-            methods = comparison_record.get("metrics", {}).get("methods", {})
+            comparison_metrics = comparison_record.get("metrics")
+            methods = (
+                comparison_metrics.get("methods", {})
+                if isinstance(comparison_metrics, dict)
+                else {}
+            )
             summary = methods.get("lora") if isinstance(methods, dict) else None
             if isinstance(summary, dict):
                 mean = summary.get("macro_f1", {}).get("mean")
@@ -171,15 +207,18 @@ with tab_sentiment:
     elif sentiment_record:
         status = sentiment_record.get("status", "invalid")
         st.caption(f"The recorded {method} run is {status}; rerun it before classifying.")
+    if checkpoint_error:
+        st.info(checkpoint_error)
     headline = st.text_area(
         "Financial headline",
         placeholder="Company raises its full-year guidance",
         key="sentiment_headline",
     )
     if st.button("Classify", type="primary"):
-        if not checkpoint_path.exists():
+        if checkpoint_path is None:
             st.warning(
-                f"The local {method} artefact is missing. Run its sentiment experiment first."
+                f"The verified local {method} artefact is unavailable. "
+                "Check the result and checkpoint files."
             )
         elif sentiment_record.get("status") != "completed":
             status = sentiment_record.get("status", "missing")

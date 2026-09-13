@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import platform
 import subprocess
 from importlib.metadata import PackageNotFoundError, version
@@ -25,17 +26,25 @@ def source_provenance(config_path: Path) -> dict[str, str | bool | None]:
     root = config_path.resolve().parent
     while root.parent != root and not (root / "pyproject.toml").exists():
         root = root.parent
-    files = [root / "pyproject.toml"] if (root / "pyproject.toml").exists() else []
-    source_dir = root / "src"
-    if source_dir.exists():
-        files.extend(sorted(source_dir.rglob("*.py")))
+    files: list[Path] = []
+    relative_root: Path | None = None
+    if (root / "pyproject.toml").exists() and (root / "src").exists():
+        relative_root = root
+        files = [root / "pyproject.toml", *sorted((root / "src").rglob("*.py"))]
+    else:
+        spec = importlib.util.find_spec("transformer_lab")
+        locations = list(spec.submodule_search_locations or []) if spec else []
+        if locations:
+            relative_root = Path(locations[0])
+            files = sorted(relative_root.rglob("*.py"))
     digest = hashlib.sha256()
     for path in files:
-        relative = path.relative_to(root).as_posix().encode("utf-8")
+        relative = path.relative_to(relative_root).as_posix().encode("utf-8")
         digest.update(relative + b"\0" + path.read_bytes() + b"\0")
-    commit, dirty = _git_state(root)
+    commit, dirty = _git_state(root) if relative_root == root else (None, None)
     return {
-        "source_tree_sha256": digest.hexdigest(),
+        "source_tree_sha256": digest.hexdigest() if files else None,
+        "source_tree_status": "available" if files else "unavailable",
         "config_sha256": file_sha256(config_path) if config_path.exists() else None,
         "git_commit": commit,
         "git_dirty": dirty,

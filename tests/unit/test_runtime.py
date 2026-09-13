@@ -36,3 +36,13 @@ def test_source_provenance_changes_when_public_source_changes(tmp_path) -> None:
     assert first["config_sha256"] == file_sha256(config)
     assert first["git_commit"] is None
     assert first["git_dirty"] is None
+
+
+def test_source_provenance_uses_the_executed_package_for_external_configs(tmp_path) -> None:
+    config = tmp_path / "external-config.toml"
+    config.write_text("[experiment]\nname='external'\n", encoding="utf-8")
+
+    provenance = source_provenance(config)
+
+    assert provenance["source_tree_sha256"]
+    assert provenance["source_tree_status"] == "available"

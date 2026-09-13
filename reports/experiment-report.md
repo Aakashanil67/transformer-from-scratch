@@ -8,18 +8,31 @@ How much adaptation does GPT-2 small need to compete with a sparse lexical refer
 
 The 75-agreement subset is loaded from the pinned dataset revision and grouped by a Unicode-normalised sentence hash. Seed 17 produces 2,417 training rows, 518 validation rows, and 518 test rows. The combined split fingerprint is `f9431e8d61a365a385c865796967754eb4da00e8e05cc3bd94a1c03f53727cf2`. Validation macro-F1 selects the saved transformer epoch; the test partition is evaluated afterwards from a frozen local artefact.
 
-The reference uses word 1–2 gram TF-IDF features (`min_df=2`, sublinear term frequency) and balanced logistic regression. `head_only` trains the 2,307-parameter classifier head. `lora` also trains rank-4 adapters on the attention input and output projections, for a total of 223,491 trainable parameters out of 124,663,299. `full` trains all 124,442,115 parameters. Each transformer run uses GPT-2 small, sequences of at most 64 tokens, micro-batches of one, gradient accumulation over 16 batches, mixed precision, and three epochs.
+The reference uses word 1–2 gram TF-IDF features (`min_df=2`, sublinear term frequency) and balanced logistic regression. `head_only` trains the 2,307-parameter classifier head. `lora` also trains rank-4 adapters on the attention input and output projections, for a total of 223,491 trainable parameters out of 124,663,299. `full` trains all 124,442,115 parameters. Each transformer run uses GPT-2 small, sequences of at most 64 tokens, micro-batches of one, gradient accumulation over 16 batches, mixed precision, and three epochs. These are historical fixed-profile runs; the three transformer rows report across-seed means and standard deviations, while TF-IDF is a single deterministic seed-17 fit.
+Peak allocated memory is the maximum recorded allocation across the seeds for each transformer method, expressed in binary GiB.
 
 ## Results
 
-| Method | Test macro-F1 (mean ± SD) | Accuracy (mean ± SD) | Peak allocated VRAM | Status |
-| --- | ---: | ---: | ---: | ---: | --- |
-| TF-IDF + balanced logistic regression | 0.8007 | 0.8533 | — | completed |
-| GPT-2 head-only | 0.4136 ± 0.0227 | 0.6918 ± 0.0150 | 0.96 GB | completed |
-| GPT-2 LoRA | 0.6931 ± 0.0471 | 0.7960 ± 0.0175 | 0.96 GB | completed |
-| GPT-2 full fine-tuning | 0.8687 ± 0.0037 | 0.8996 ± 0.0039 | 3.28 GB | completed |
+| Method | Test macro-F1 (mean ± SD) | Accuracy (mean ± SD) | Peak allocated VRAM (GiB) | Status |
+| --- | ---: | ---: | ---: | --- |
+| TF-IDF + balanced logistic regression | 0.8007 (single seed 17) | 0.8533 (single seed 17) | — | completed |
+| GPT-2 head-only | 0.4136 ± 0.0227 | 0.6918 ± 0.0150 | 0.958 GiB | completed |
+| GPT-2 LoRA | 0.6931 ± 0.0471 | 0.7960 ± 0.0175 | 1.427 GiB | completed |
+| GPT-2 full fine-tuning | 0.8687 ± 0.0037 | 0.8996 ± 0.0039 | 3.748 GiB | completed |
 
-The full model's per-class F1 scores are 0.8348 for negative, 0.9337 for neutral, and 0.8249 for positive. LoRA reaches 0.6542, 0.8908, and 0.6094 respectively. The head-only model never predicts the negative class correctly; its negative-class F1 is zero. Its 0.6795 accuracy obscures that failure because neutral examples form most of the test set.
+For the seed-17 runs, the full model's per-class F1 scores are 0.8348 for negative, 0.9337 for neutral, and 0.8249 for positive. LoRA reaches 0.6542, 0.8908, and 0.6094 respectively. The head-only model never predicts the negative class correctly; its negative-class F1 is zero. Its 0.6795 accuracy obscures that failure because neutral examples form most of the test set. Per-class values here are single-seed diagnostics, not three-seed averages.
+
+## Scratch language-model check
+
+The separate byte-level decoder was initialised randomly and trained on the prepared Tiny Shakespeare split. The four-layer, four-head, width-128 model reached validation loss 2.162 from 5.558 over 1,000 optimiser updates, processing 4,096,000 tokens. This is a learning check for the local implementation, not a perplexity comparison with GPT-2's different tokenizer. The saved result is [`tiny-shakespeare-transformer-scratch.json`](results/tiny-shakespeare-transformer-scratch.json); its ignored local checkpoint is bound by the recorded hash.
+
+## Generated diagnostics
+
+The [per-seed parameter/accuracy plot](figures/macro-f1-vs-parameters.svg), [calibration reliability plot](figures/calibration-reliability.svg), and [scratch learning curve](figures/scratch-transformer-learning-curve.svg) are generated from the saved records and local artefacts. Calibration points show the seed-17 LoRA test scores before and after the validation-fitted temperature; bin counts are printed beside each point.
+
+## Validation-selected follow-up status
+
+The v3 candidate protocol is frozen in [`configs/sentiment/v3-protocol.toml`](../configs/sentiment/v3-protocol.toml). Its selector consumes validation-only candidate summaries, rejects test-labelled fields, and records unavailable candidates instead of silently substituting historical runs. The nine candidate summaries and the selected three-seed test matrix are not present in this result set, so the historical fixed-profile table above must not be read as validation-selected evidence. Running `select-sentiment` without those summaries fails closed; no v3 test score is claimed here.
 
 ## Interpretation
 

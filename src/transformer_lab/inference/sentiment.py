@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -65,14 +66,45 @@ def load_local_sentiment_classifier(
     payload = torch.load(checkpoint, map_location="cpu", weights_only=True)
     if not isinstance(payload, dict):
         raise ValueError("sentiment artifact is incomplete: expected a mapping")
+    schema_version = payload.get("schema_version", 1)
+    if schema_version not in {1, 2}:
+        raise ValueError("sentiment artifact has an unsupported schema")
     missing = {"architecture", "num_labels", "state_dict", "labels", "mode"} - payload.keys()
     if missing:
         names = ", ".join(sorted(missing))
         raise ValueError(f"sentiment artifact is incomplete: missing {names}")
+    labels = payload["labels"]
+    num_labels = payload["num_labels"]
+    if (
+        not isinstance(labels, (list, tuple))
+        or not labels
+        or any(not isinstance(label, str) or not label for label in labels)
+        or len(set(labels)) != len(labels)
+    ):
+        raise ValueError("sentiment artifact labels must be a unique non-empty list")
+    if isinstance(num_labels, bool) or not isinstance(num_labels, int) or num_labels != len(labels):
+        raise ValueError("sentiment artifact label count does not match labels")
+    if payload["mode"] not in {"head_only", "lora", "full"}:
+        raise ValueError("sentiment artifact has an unsupported mode")
+    temperature = payload.get("calibration_temperature", 1.0)
+    if (
+        not isinstance(temperature, int | float)
+        or not math.isfinite(float(temperature))
+        or temperature <= 0
+    ):
+        raise ValueError("sentiment artifact temperature must be finite and positive")
+    stored_max_length = payload.get("max_length", max_length)
+    if (
+        isinstance(stored_max_length, bool)
+        or not isinstance(stored_max_length, int)
+        or stored_max_length <= 0
+    ):
+        raise ValueError("sentiment artifact max_length must be a positive integer")
+    for key in ("tokenizer_id", "tokenizer_revision"):
+        if key in payload and (not isinstance(payload[key], str) or not payload[key]):
+            raise ValueError(f"sentiment artifact {key} must be a non-empty string")
     try:
-        model = SentimentClassifier(
-            GPTConfig(**payload["architecture"]), num_labels=int(payload["num_labels"])
-        )
+        model = SentimentClassifier(GPTConfig(**payload["architecture"]), num_labels=num_labels)
         if payload.get("mode") == "lora":
             if "lora" not in payload:
                 raise ValueError("missing lora configuration")
@@ -87,10 +119,10 @@ def load_local_sentiment_classifier(
     return LocalSentimentClassifier(
         model=model,
         tokenizer=tokenizer,
-        labels=tuple(payload["labels"]),
+        labels=tuple(labels),
         device=device,
-        max_length=max_length,
-        calibration_temperature=float(payload.get("calibration_temperature", 1.0)),
+        max_length=stored_max_length,
+        calibration_temperature=float(temperature),
     )
 
 

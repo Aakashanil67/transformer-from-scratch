@@ -11,6 +11,27 @@ from torch.nn import functional as F
 from transformer_lab.config import GPTConfig
 
 
+def transformer_parameter_count(config: GPTConfig) -> int:
+    """Return the exact count for the tied, GPT-style decoder implementation."""
+    embedding_parameters = (config.vocab_size + config.block_size) * config.n_embd
+    if config.bias:
+        block_parameters = 12 * config.n_embd**2 + 13 * config.n_embd
+        final_layer_norm = 2 * config.n_embd
+    else:
+        block_parameters = 12 * config.n_embd**2 + 2 * config.n_embd
+        final_layer_norm = config.n_embd
+    return embedding_parameters + config.n_layer * block_parameters + final_layer_norm
+
+
+def attention_lora_parameter_count(config: GPTConfig, *, rank: int) -> int:
+    """Count rank-r adapters on every attention input/output projection."""
+    if isinstance(rank, bool) or rank <= 0:
+        raise ValueError("rank must be positive")
+    return (
+        config.n_layer * rank * (config.n_embd + 3 * config.n_embd + config.n_embd + config.n_embd)
+    )
+
+
 class CausalSelfAttention(nn.Module):
     """Multi-head self-attention with a lower-triangular attention mask."""
 

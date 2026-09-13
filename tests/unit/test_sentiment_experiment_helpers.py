@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+import pytest
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
@@ -80,6 +81,24 @@ def test_sentiment_helpers_train_and_predict_on_a_tiny_batch() -> None:
     assert logits.shape == (2, 3)
 
 
+def test_predict_restores_training_mode_when_model_evaluation_fails() -> None:
+    model = SentimentClassifier(
+        GPTConfig(vocab_size=4, block_size=4, n_layer=1, n_head=2, n_embd=8), num_labels=3
+    ).train()
+    loader = DataLoader(
+        TensorDataset(
+            torch.tensor([[4, 0, 0, 0]]),
+            torch.tensor([[1, 0, 0, 0]]),
+            torch.tensor([0]),
+        ),
+        batch_size=1,
+    )
+
+    with pytest.raises(ValueError, match="out-of-range"):
+        _predict(model, loader, torch.device("cpu"))
+    assert model.training
+
+
 def test_incomplete_accumulation_window_uses_its_actual_batch_count() -> None:
     config = GPTConfig(vocab_size=16, block_size=4, n_layer=1, n_head=2, n_embd=8)
     model = SentimentClassifier(config, num_labels=3)
@@ -155,6 +174,32 @@ def test_transformer_training_resumes_at_the_next_epoch(tmp_path: Path) -> None:
     assert checkpoint.exists() and best.exists()
     assert first["best_epoch"] == 1
     assert [candidate["epoch"] for candidate in resumed["validation_candidates"]] == [1, 2]
+
+
+def test_transformer_training_rejects_a_missing_selected_best_checkpoint(
+    tmp_path: Path, monkeypatch
+) -> None:
+    config = GPTConfig(vocab_size=16, block_size=4, n_layer=1, n_head=2, n_embd=8)
+    input_ids = torch.tensor([[1, 2, 0, 0], [3, 4, 5, 0]])
+    masks = torch.tensor([[1, 1, 0, 0], [1, 1, 1, 0]])
+    labels = torch.tensor([0, 1])
+    loader = DataLoader(TensorDataset(input_ids, masks, labels), batch_size=2)
+    monkeypatch.setattr(sentiment_module, "_atomic_torch_save", lambda *args, **kwargs: None)
+
+    with pytest.raises(FileNotFoundError, match="best"):
+        _train_transformer(
+            SentimentClassifier(config, num_labels=3),
+            loader,
+            loader,
+            device=torch.device("cpu"),
+            epochs=1,
+            learning_rate=0.01,
+            weight_decay=0,
+            accumulation=1,
+            max_grad_norm=1,
+            amp=False,
+            best_model_path=tmp_path / "best.pt",
+        )
 
 
 def test_cpu_sentiment_preflight_writes_an_unavailable_record(tmp_path: Path) -> None:

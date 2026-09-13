@@ -6,6 +6,8 @@ The repository implements a decoder-only transformer with learned token and posi
 
 The GPT-2 conversion targets `openai-community/gpt2` revision `607a30d783dfa663caf39e06633721c8d4cfcd7e`. The local loader transposes the four projection matrices whose upstream Conv1D layout differs from PyTorch's `nn.Linear` layout.
 
+The scratch-training path is a separate byte-level decoder initialised from random weights. Its learning curves and samples must not be presented as converted GPT-2 generations; the two paths answer different questions.
+
 The five-prompt CPU parity run reached a maximum absolute logit error of `1.125e-4` at a tolerance of `2e-4`, with 100% next-token agreement. The expanded suite adds four random token lengths, a mixed-length batch and hidden-state comparisons; its maximum hidden-state error is `4.883e-4` at a tolerance of `1e-3`. These checks validate weight mapping and forward computation. They do not measure generated-text quality, safety or domain accuracy.
 
 ## Sentiment head

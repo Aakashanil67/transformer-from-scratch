@@ -1,0 +1,44 @@
+[experiment]
+name = "tiny-shakespeare-transformer-scratch"
+kind = "lm"
+
+[model]
+model_type = "transformer"
+vocab_size = 256
+block_size = 128
+n_layer = 4
+n_head = 4
+n_embd = 128
+dropout = 0.1
+bias = true
+
+[data]
+train = "../../data/prepared/tiny_shakespeare/train.txt"
+validation = "../../data/prepared/tiny_shakespeare/validation.txt"
+test = "../../data/prepared/tiny_shakespeare/test.txt"
+
+[optimization]
+steps = 4000
+batch_size = 8
+block_size = 128
+learning_rate = 0.0003
+weight_decay = 0.1
+warmup_steps = 200
+gradient_accumulation_steps = 4
+max_grad_norm = 1.0
+amp = true
+eval_interval = 250
+eval_batches = 20
+
+[output]
+directory = "../../artifacts/lm/tiny-shakespeare-transformer"
+checkpoint = "../../checkpoints/tiny-shakespeare-transformer.pt"
+result = "../../reports/results/tiny-shakespeare-transformer-scratch.json"
+
+[generation]
+prompt = "To be"
+max_new_tokens = 80
+temperature = 0.8
+top_k = 40
+do_sample = true
+seed = 17

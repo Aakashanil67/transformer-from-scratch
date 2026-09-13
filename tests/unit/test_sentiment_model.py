@@ -1,3 +1,4 @@
+import pytest
 import torch
 
 from transformer_lab.config import GPTConfig
@@ -28,3 +29,16 @@ def test_sentiment_classifier_rejects_an_invalid_attention_mask() -> None:
         assert "attention_mask" in str(error)
     else:
         raise AssertionError("invalid attention mask was accepted")
+
+
+@pytest.mark.parametrize(
+    "mask",
+    [torch.tensor([[1, 0, 1]]), torch.tensor([[0, 1, 1]]), torch.tensor([[1, 2, 0]])],
+)
+def test_sentiment_classifier_requires_a_right_padded_binary_mask(mask: torch.Tensor) -> None:
+    model = SentimentClassifier(
+        GPTConfig(vocab_size=20, block_size=6, n_layer=1, n_head=2, n_embd=8), num_labels=3
+    )
+
+    with pytest.raises(ValueError, match="right-padded binary"):
+        model(torch.tensor([[1, 2, 3]]), attention_mask=mask)

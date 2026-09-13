@@ -10,6 +10,16 @@ Let a batch of token IDs be `X` with shape `(B, T)`. The token embedding matrix 
 
 The position lookup is independent of the batch. A token therefore receives the same lexical vector at different positions but a different positional vector.
 
+## Parameter count
+
+Let `V` be the vocabulary size, `T` the context length, `d` the model width, and `L` the number of blocks. With tied input/output embeddings and bias enabled, the exact decoder count is
+
+`Vd + Td + L(12d² + 13d) + 2d`.
+
+The first two terms are token and position embeddings. Each block contributes `12d²` weights from the `d → 3d` attention projection, `d → d` output projection, and the two `d → 4d → d` MLP projections. Its `13d` affine terms are 9d linear biases and 4d LayerNorm weight/bias terms. The final LayerNorm contributes `2d`; the language-model head is tied to the token embedding and adds no new parameters. With `bias=False`, linear biases and LayerNorm biases disappear, leaving `Vd + Td + L(12d² + 2d) + d`; LayerNorm weights remain.
+
+For a three-class classifier, add `dC + C` for the head. Attention-only rank-`r` LoRA adds `Lr(d + 3d + d + d) = 6Lrd`: `4rd` for `c_attn` and `2rd` for `c_proj`. These formulae count stored parameters, not optimiser state or activation memory.
+
 ## Scaled causal attention
 
 For one head, the normalised hidden states produce
@@ -60,7 +70,7 @@ The language-model head has weight matrix `W` with shape `(V, d)`. The local mod
 
 The tokenizer starts with the 256 possible byte values. Given a UTF-8 byte sequence, it counts adjacent pairs and chooses the pair with highest frequency; ties are resolved by the numeric pair. If `(a, b)` is assigned new ID `n`, its vocabulary entry is the concatenation `v[n] = v[a] + v[b]`. Encoding applies learned merges in order. Decoding concatenates the stored byte strings and decodes UTF-8.
 
-For `aaaaaa`, the first frequent pair is `(a, a)`, which becomes one token representing `aa`; the sequence becomes `aaa`. A later rule can merge `(aa, aa)` if the vocabulary budget and corpus frequency allow it. Because the base alphabet contains every byte and the vocabulary stores byte strings, a successful encode/decode round trip is lossless for valid UTF-8. The implementation is intentionally educational: it has no GPT-2 pre-tokenisation rules and recomputes pair counts at each merge.
+For six byte tokens `[a, a, a, a, a, a]`, the first frequent pair `(a, a)` becomes one token representing `aa`; non-overlapping replacement produces `[aa, aa, aa]`, which still decodes to six `a` bytes. A later rule can merge `(aa, aa)` if the vocabulary budget and corpus frequency allow it. Tokens are vocabulary entries, token IDs are their integer indices, and decoded text is the byte concatenation after lookup. Because the base alphabet contains every byte and the vocabulary stores byte strings, a successful encode/decode round trip is lossless for valid UTF-8. The implementation is intentionally educational: it has no GPT-2 pre-tokenisation rules and recomputes pair counts at each merge.
 
 ## LoRA
 

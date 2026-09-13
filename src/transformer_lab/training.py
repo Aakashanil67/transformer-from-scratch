@@ -42,6 +42,9 @@ class TrainingConfig:
             raise ValueError("warmup_steps must be non-negative")
         if self.gradient_accumulation_steps <= 0:
             raise ValueError("gradient_accumulation_steps must be positive")
+        update_budget = math.ceil(self.steps / self.gradient_accumulation_steps)
+        if self.warmup_steps > update_budget:
+            raise ValueError("warmup_steps cannot exceed the optimiser update budget")
         if self.max_grad_norm <= 0:
             raise ValueError("max_grad_norm must be positive")
 
@@ -54,6 +57,7 @@ class TrainingHistory:
     training_losses: list[float] = field(default_factory=list)
     validation_steps: list[int] = field(default_factory=list)
     tokens_seen: int = 0
+    optimizer_steps: int = 0
     elapsed_seconds: float = 0.0
 
 
@@ -85,14 +89,19 @@ def _estimate_loss(
 
 
 def _generator(seed: int, device: torch.device) -> torch.Generator:
+    if device.type not in {"cpu", "cuda"}:
+        raise ValueError(
+            f"language-model sampling supports CPU and CUDA tensors; received {device.type}"
+        )
     generator = torch.Generator(device=device.type)
     return generator.manual_seed(seed)
 
 
 def _lr_lambda(step: int, config: TrainingConfig) -> float:
+    update_budget = math.ceil(config.steps / config.gradient_accumulation_steps)
     if config.warmup_steps and step <= config.warmup_steps:
         return step / config.warmup_steps
-    remaining = max(config.steps - config.warmup_steps, 1)
+    remaining = max(update_budget - config.warmup_steps, 1)
     progress = min(max((step - config.warmup_steps) / remaining, 0.0), 1.0)
     return 0.5 * (1.0 + math.cos(math.pi * progress))
 
@@ -106,11 +115,12 @@ def train_language_model(
     checkpoint_path: Path | None = None,
     resume: bool = False,
     checkpoint_config: dict[str, Any] | None = None,
+    checkpoint_metadata: dict[str, Any] | None = None,
 ) -> TrainingHistory:
     """Train a model with independent sampling streams and optional resume support."""
-    device = next(model.parameters()).device
-    train_generator = _generator(config.seed, device)
-    eval_generator = _generator(config.seed + 1, device)
+    model_device = next(model.parameters()).device
+    train_generator = _generator(config.seed, train_token_ids.device)
+    eval_generator = _generator(config.seed + 1, validation_token_ids.device)
     trainable = [parameter for parameter in model.parameters() if parameter.requires_grad]
     if not trainable:
         raise ValueError("model has no trainable parameters")
@@ -120,7 +130,7 @@ def train_language_model(
         weight_decay=config.weight_decay,
     )
     scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda step: _lr_lambda(step, config))
-    amp_enabled = bool(config.amp and device.type == "cuda")
+    amp_enabled = bool(config.amp and model_device.type == "cuda")
     scaler = torch.amp.GradScaler("cuda", enabled=amp_enabled)
     history = TrainingHistory()
     start_step = 0
@@ -138,11 +148,22 @@ def train_language_model(
             expected_config=checkpoint_config or {},
         )
         start_step = int(payload["step"])
+        if start_step < 0 or start_step > config.steps:
+            raise ValueError("checkpoint microstep is outside the requested training budget")
+        if start_step % config.gradient_accumulation_steps != 0 and start_step != config.steps:
+            raise ValueError(
+                "checkpoint was saved during an incomplete accumulation window and "
+                "cannot be resumed"
+            )
         saved_history = payload.get("history", {})
         history.validation_losses = list(saved_history.get("validation_losses", []))
         history.training_losses = list(saved_history.get("training_losses", []))
         history.validation_steps = list(saved_history.get("validation_steps", []))
         history.tokens_seen = int(saved_history.get("tokens_seen", 0))
+        history.optimizer_steps = int(
+            payload.get("optimizer_step", saved_history.get("optimizer_steps", start_step))
+        )
+        history.elapsed_seconds = float(saved_history.get("elapsed_seconds", 0.0))
     else:
         history.validation_losses.append(
             _estimate_loss(
@@ -150,27 +171,33 @@ def train_language_model(
                 validation_token_ids,
                 config=config,
                 generator=eval_generator,
-                device=device,
+                device=model_device,
             )
         )
         history.validation_steps.append(0)
 
+    previous_elapsed = history.elapsed_seconds
     started = time.perf_counter()
     optimizer.zero_grad(set_to_none=True)
     model.train()
     for step in range(start_step + 1, config.steps + 1):
+        window_start = ((step - 1) // config.gradient_accumulation_steps) * (
+            config.gradient_accumulation_steps
+        ) + 1
+        window_size = min(config.gradient_accumulation_steps, config.steps - window_start + 1)
         inputs, targets = sample_batch(
             train_token_ids,
             batch_size=config.batch_size,
             block_size=config.block_size,
             generator=train_generator,
         )
-        with torch.amp.autocast(device_type=device.type, enabled=amp_enabled):
-            _, loss = model(inputs.to(device), targets.to(device))
+        with torch.amp.autocast(device_type=model_device.type, enabled=amp_enabled):
+            _, loss = model(inputs.to(model_device), targets.to(model_device))
             if loss is None:
                 raise RuntimeError("language model did not return a training loss")
-            scaled_loss = loss / config.gradient_accumulation_steps
+            scaled_loss = loss / window_size
         scaler.scale(scaled_loss).backward()
+        completed_update = False
         if step % config.gradient_accumulation_steps == 0 or step == config.steps:
             scaler.unscale_(optimizer)
             nn.utils.clip_grad_norm_(trainable, config.max_grad_norm)
@@ -178,6 +205,8 @@ def train_language_model(
             scaler.update()
             optimizer.zero_grad(set_to_none=True)
             scheduler.step()
+            history.optimizer_steps += 1
+            completed_update = True
         history.training_losses.append(float(loss.detach().cpu()))
         history.tokens_seen += config.batch_size * config.block_size
 
@@ -188,26 +217,31 @@ def train_language_model(
                     validation_token_ids,
                     config=config,
                     generator=eval_generator,
-                    device=device,
+                    device=model_device,
                 )
             )
             history.validation_steps.append(step)
-            if checkpoint_path is not None:
-                save_checkpoint(
-                    checkpoint_path,
-                    model=model,
-                    optimizer=optimizer,
-                    scheduler=scheduler,
-                    scaler=scaler,
-                    step=step,
-                    history={
-                        "validation_losses": history.validation_losses,
-                        "training_losses": history.training_losses,
-                        "validation_steps": history.validation_steps,
-                        "tokens_seen": history.tokens_seen,
-                    },
-                    generators=generators,
-                    config=checkpoint_config,
-                )
-    history.elapsed_seconds = time.perf_counter() - started
+        if checkpoint_path is not None and completed_update:
+            history.elapsed_seconds = previous_elapsed + (time.perf_counter() - started)
+            save_checkpoint(
+                checkpoint_path,
+                model=model,
+                optimizer=optimizer,
+                scheduler=scheduler,
+                scaler=scaler,
+                step=step,
+                optimizer_step=history.optimizer_steps,
+                history={
+                    "validation_losses": history.validation_losses,
+                    "training_losses": history.training_losses,
+                    "validation_steps": history.validation_steps,
+                    "tokens_seen": history.tokens_seen,
+                    "optimizer_steps": history.optimizer_steps,
+                    "elapsed_seconds": history.elapsed_seconds,
+                },
+                generators=generators,
+                config=checkpoint_config,
+                metadata=checkpoint_metadata,
+            )
+    history.elapsed_seconds = previous_elapsed + (time.perf_counter() - started)
     return history

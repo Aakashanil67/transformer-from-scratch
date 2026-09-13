@@ -16,11 +16,13 @@ from sklearn.linear_model import LogisticRegression
 
 from transformer_lab.config_io import ExperimentConfig, effective_config
 from transformer_lab.data.financial_phrasebank import (
+    evaluation_example_ids,
     load_phrasebank,
     split_phrasebank,
     split_summary,
 )
 from transformer_lab.evaluation.classification import classification_metrics
+from transformer_lab.experiments.manifests import build_manifest, resolve_run
 from transformer_lab.experiments.records import ExperimentRecord
 from transformer_lab.experiments.runtime import environment_metadata, file_sha256, source_provenance
 
@@ -50,6 +52,7 @@ def run_baseline(config: ExperimentConfig | None = None) -> Path:
     """Train, evaluate, and record the TF-IDF baseline."""
     if config is None:
         raise ValueError("a baseline configuration is required")
+    config = resolve_run(config)
     revision = str(config.data.get("dataset_revision", REVISION))
     archive_path = Path(
         hf_hub_download(REPOSITORY, ARCHIVE, repo_type="dataset", revision=revision)
@@ -65,7 +68,12 @@ def run_baseline(config: ExperimentConfig | None = None) -> Path:
     validation_labels = [example.label for example in splits.validation]
     test_labels = [example.label for example in splits.test]
     vectorizer = TfidfVectorizer(ngram_range=(1, 2), min_df=2, sublinear_tf=True)
-    classifier = LogisticRegression(max_iter=2_000, class_weight="balanced", random_state=seed)
+    classifier = LogisticRegression(
+        C=float(config.optimization.get("c", 1.0)),
+        max_iter=2_000,
+        class_weight="balanced",
+        random_state=seed,
+    )
     started = perf_counter()
     classifier.fit(vectorizer.fit_transform(train_text), train_labels)
     elapsed_seconds = perf_counter() - started
@@ -105,9 +113,15 @@ def run_baseline(config: ExperimentConfig | None = None) -> Path:
             "prediction_ids": np.asarray([labels.index(label) for label in test_predictions]),
             "probabilities": np.asarray(test_probabilities),
             "labels": labels,
+            "example_ids": np.asarray(evaluation_example_ids(splits.test)),
         },
         evaluation_path,
     )
+    provenance = source_provenance(config.source_path)
+    artifacts = {
+        "model": {"path": "model.joblib", "sha256": file_sha256(model_path)},
+        "evaluation": {"path": "evaluation.joblib", "sha256": file_sha256(evaluation_path)},
+    }
     record = ExperimentRecord(
         run_id=config.experiment["name"],
         status="completed",
@@ -125,11 +139,18 @@ def run_baseline(config: ExperimentConfig | None = None) -> Path:
             "split": split_summary(splits),
         },
         environment=environment_metadata(torch.device("cpu")),
-        provenance=source_provenance(config.source_path),
-        artifacts={
-            "model": {"sha256": file_sha256(model_path)},
-            "evaluation": {"sha256": file_sha256(evaluation_path)},
-        },
+        provenance=provenance,
+        artifacts=artifacts,
+        manifest=build_manifest(
+            config,
+            provenance=provenance,
+            data_identity={"split": split_summary(splits)},
+            evaluation={
+                "seed": seed,
+                "bootstrap_samples": config.evaluation.get("bootstrap_samples", 1_000),
+            },
+            artifacts=artifacts,
+        ),
         parameters={
             "total": int(classifier.coef_.size + classifier.intercept_.size),
             "trainable": int(classifier.coef_.size + classifier.intercept_.size),
@@ -140,6 +161,7 @@ def run_baseline(config: ExperimentConfig | None = None) -> Path:
             "examples_per_second": len(splits.train) / elapsed_seconds,
         },
         metrics={"validation": validation_metrics, "test": test_metrics},
+        schema_version=3,
     )
     record.write(result_path)
     return result_path

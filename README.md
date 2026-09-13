@@ -2,6 +2,8 @@
 
 This repository implements a compact decoder-only transformer in raw PyTorch and then checks its computations against GPT-2. It also provides a byte-level BPE for study, a reproducible Financial PhraseBank reference experiment, low-rank adapter components, and a local Streamlit playground.
 
+Keep three claims separate: the architecture is implemented from scratch; a small byte-level model is trained from random initialisation; and a separate local model converts pinned pretrained GPT-2 weights. The parity and sentiment results belong to the converted GPT-2 path, not to the scratch-training demonstration.
+
 The project is deliberately inspectable. The important operations are in `src/transformer_lab`, rather than hidden behind a training framework.
 
 ## The problem
@@ -19,6 +21,7 @@ The project asks whether a small, readable transformer can reproduce a public GP
 | Financial PhraseBank GPT-2 LoRA | Three-seed test macro-F1 `0.6931 ± 0.0471`; accuracy `0.7960 ± 0.0175` |
 | Financial PhraseBank GPT-2 full tuning | Three-seed test macro-F1 `0.8687 ± 0.0037`; accuracy `0.8996 ± 0.0039` |
 | Tiny Shakespeare byte-bigram | Validation loss `5.990` → `2.772` over 100 updates |
+| Tiny Shakespeare scratch transformer | Validation loss `5.558` → `2.162` over 1,000 optimiser updates; 842,496 parameters |
 
 The result summaries are tracked in [`reports/results`](reports/results). Raw data, pretrained weights, checkpoints, and transient run files are ignored. The GPT-2 parity summary uses the pinned `openai-community/gpt2` revision `607a30d783dfa663caf39e06633721c8d4cfcd7e`. The Financial PhraseBank archive uses dataset revision `8d3fe0c36d5feec6b3cc5e455b0fcb4820fb9964`.
 
@@ -56,6 +59,13 @@ Check the raw transformer against the pinned GPT-2 checkpoint:
 
 ```powershell
 .venv\Scripts\transformer-lab.exe verify-gpt2 --config configs\gpt2\parity.toml --device cpu
+```
+
+Train the implemented decoder from random initialisation on the prepared byte corpus, then sample it:
+
+```powershell
+.venv\Scripts\transformer-lab.exe train-lm --config configs\lm\tiny-shakespeare-transformer.toml --device cpu --seed 17
+.venv\Scripts\transformer-lab.exe sample --config configs\lm\tiny-shakespeare-transformer.toml --device cpu --seed 17
 ```
 
 Run the Financial PhraseBank reference model:
@@ -102,6 +112,7 @@ The Generation tab samples from the local implementation loaded with mapped GPT-
 - Validation-set temperature scaling with test-set Brier score and expected calibration error.
 - Three-seed summaries with aligned paired-bootstrap comparisons.
 - Source-tree, configuration and checkpoint fingerprints in new result records.
+- Validation-only candidate selection with a frozen selection manifest; test metrics are read only after selection.
 
 The implementation is intended for inspection and reproducible small runs. It is not a claim that a laptop-scale experiment matches a production training system.
 
@@ -111,10 +122,13 @@ The implementation is intended for inspection and reproducible small runs. It is
 - The PhraseBank splitter groups normalised duplicate sentences before stratification. A row-wise split would allow repeated sentences to cross the test boundary.
 - Full tuning is the accuracy reference; LoRA makes the parameter/accuracy trade-off measurable rather than implied.
 - A fixed split seed and separate optimisation seeds measure training variation without changing the benchmark.
+- The scratch transformer uses a byte vocabulary and should not be compared with GPT-2 perplexities without accounting for tokenisation.
 
 ## Limits and next steps
 
 The three-seed matrix is stronger than a single run, but it is still one dataset, one GPT-2 scale and one maximum sequence length. The labels are sentence-level judgements from the original annotator pool, not current market impact. The next useful extension is a time-based financial-news holdout, followed by a larger-model comparison if the hardware budget allows it.
+
+See the [derivations](reports/derivations.md), [generated historical table](reports/generated-results.md), [parameter/accuracy figure](reports/figures/macro-f1-vs-parameters.svg), [calibration figure](reports/figures/calibration-reliability.svg), [scratch learning curve](reports/figures/scratch-transformer-learning-curve.svg), and the [interview walkthrough](docs/walkthrough.md) for the tensor-level explanation and the limits of the evidence. Historical results are fixed-profile evidence; a validation-selected follow-up, when executed, will be labelled exploratory rather than treated as an independent holdout.
 
 ## Repository map
 

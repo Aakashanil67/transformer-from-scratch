@@ -38,6 +38,38 @@ def test_probability_metrics_report_brier_score_and_calibration_error() -> None:
     assert metrics["expected_calibration_error"] == pytest.approx(0.2666666666666667)
 
 
+def test_probability_metrics_reject_non_finite_or_wrong_class_probabilities() -> None:
+    with pytest.raises(ValueError, match="finite"):
+        classification_metrics(
+            np.array([0, 1]),
+            np.array([0, 1]),
+            labels=[0, 1],
+            probabilities=np.array([[np.nan, 0.0], [0.0, 1.0]]),
+            bootstrap_samples=2,
+        )
+
+    with pytest.raises(ValueError, match="predicted classes"):
+        classification_metrics(
+            np.array([0, 1]),
+            np.array([0, 1]),
+            labels=[0, 1],
+            probabilities=np.array([[0.1, 0.9], [0.0, 1.0]]),
+            bootstrap_samples=2,
+        )
+
+
+def test_calibration_bins_include_the_exact_point_nine_boundary() -> None:
+    metrics = classification_metrics(
+        np.array([0, 1]),
+        np.array([0, 0]),
+        labels=[0, 1],
+        probabilities=np.array([[0.9, 0.1], [0.9, 0.1]]),
+        bootstrap_samples=2,
+    )
+
+    assert metrics["expected_calibration_error"] == pytest.approx(0.4)
+
+
 def test_temperature_fit_reduces_validation_negative_log_likelihood() -> None:
     logits = np.array([[8.0, 0.0], [0.0, 8.0], [5.0, 0.0], [5.0, 0.0]])
     targets = np.array([0, 1, 0, 1])
@@ -64,6 +96,25 @@ def test_paired_bootstrap_uses_aligned_examples() -> None:
 
     assert result["macro_f1_difference"] > 0
     assert result["wins"] + result["ties"] + result["losses"] == 100
+
+
+def test_paired_bootstrap_can_resample_duplicate_groups_as_clusters() -> None:
+    targets = np.array([0, 0, 1, 1])
+    reference = np.array([0, 1, 1, 1])
+    challenger = np.array([0, 0, 1, 0])
+
+    result = paired_bootstrap_difference(
+        targets,
+        challenger,
+        reference,
+        groups=np.array(["a", "a", "b", "b"]),
+        labels=[0, 1],
+        samples=20,
+        seed=9,
+    )
+
+    assert result["resampling_unit"] == "duplicate_group"
+    assert result["group_count"] == 2
 
 
 def test_seed_summary_keeps_training_variation_separate() -> None:

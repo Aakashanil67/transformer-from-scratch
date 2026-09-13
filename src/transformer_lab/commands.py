@@ -4,15 +4,24 @@ from __future__ import annotations
 
 import json
 import random
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
 import torch
 
+from transformer_lab.config import GPTConfig
 from transformer_lab.config_io import ExperimentConfig, effective_config, load_experiment_config
+from transformer_lab.experiments.manifests import build_manifest, config_digest, verify_run
 from transformer_lab.experiments.records import ExperimentRecord
-from transformer_lab.experiments.runtime import environment_metadata, peak_memory
+from transformer_lab.experiments.runtime import (
+    environment_metadata,
+    file_sha256,
+    peak_memory,
+    source_provenance,
+)
 from transformer_lab.models.bigram import BigramLanguageModel
+from transformer_lab.models.transformer import DecoderOnlyTransformer
 from transformer_lab.training import TrainingConfig, train_language_model
 
 
@@ -55,8 +64,9 @@ def train_lm(
     config = load_experiment_config(config_path)
     if config.experiment["kind"] != "lm":
         raise ValueError("train-lm requires a configuration with experiment.kind = 'lm'")
-    if config.model.get("model_type", "bigram") != "bigram":
-        raise ValueError("the current train-lm command supports model_type = 'bigram'")
+    model_type = str(config.model.get("model_type", "bigram"))
+    if model_type not in {"bigram", "transformer"}:
+        raise ValueError("train-lm model_type must be bigram or transformer")
     train_path = Path(config.data["train"])
     validation_path = Path(config.data["validation"])
     if not train_path.exists() or not validation_path.exists():
@@ -65,12 +75,31 @@ def train_lm(
     run_seed = int(seed if seed is not None else config.generation.get("seed", 17))
     random.seed(run_seed)
     torch.manual_seed(run_seed)
-    model = BigramLanguageModel(int(config.model.get("vocab_size", 256))).to(device)
+    optimisation = config.optimization
+    if model_type == "bigram":
+        model = BigramLanguageModel(int(config.model.get("vocab_size", 256))).to(device)
+        model_metadata: dict[str, Any] = {
+            "model_type": "bigram",
+            "vocab_size": model.token_logits.num_embeddings,
+        }
+    else:
+        architecture = GPTConfig(
+            vocab_size=int(config.model.get("vocab_size", 256)),
+            block_size=int(config.model.get("block_size", optimisation.get("block_size", 8))),
+            n_layer=int(config.model["n_layer"]),
+            n_head=int(config.model["n_head"]),
+            n_embd=int(config.model["n_embd"]),
+            dropout=float(config.model.get("dropout", 0.0)),
+            bias=bool(config.model.get("bias", True)),
+        )
+        model = DecoderOnlyTransformer(architecture).to(device)
+        model_metadata = {"model_type": "transformer", "architecture": architecture.__dict__}
     train_ids = torch.tensor(list(train_path.read_bytes()), dtype=torch.long)
     validation_ids = torch.tensor(list(validation_path.read_bytes()), dtype=torch.long)
-    optimisation = config.optimization
     checkpoint = Path(config.output.get("checkpoint", "artifacts/lm/model.pt"))
     stable_config = effective_config(config)
+    stable_config["generation"]["seed"] = run_seed
+    manifest_config = replace(config, generation={**dict(config.generation), "seed": run_seed})
     history = train_language_model(
         model,
         train_token_ids=train_ids,
@@ -92,12 +121,13 @@ def train_lm(
         checkpoint_path=checkpoint,
         resume=resume,
         checkpoint_config=stable_config,
+        checkpoint_metadata=model_metadata,
     )
     elapsed = history.elapsed_seconds
     record = ExperimentRecord(
         run_id=str(config.experiment["name"]),
         status="completed",
-        model={"type": "bigram", "vocab_size": model.token_logits.num_embeddings},
+        model={"type": model_type, **model_metadata},
         config=stable_config,
         data={"seed": run_seed},
         optimization=dict(config.optimization),
@@ -113,13 +143,32 @@ def train_lm(
             "tokens_per_second": history.tokens_seen / elapsed if elapsed else 0.0,
         },
         memory=peak_memory(device),
+        artifacts={
+            "model": {"path": checkpoint.name, "sha256": file_sha256(checkpoint)},
+        },
+        manifest=build_manifest(
+            manifest_config,
+            provenance=source_provenance(config_path),
+            data_identity={
+                "train_sha256": file_sha256(train_path),
+                "validation_sha256": file_sha256(validation_path),
+            },
+            evaluation={
+                "seed": run_seed,
+                "eval_interval": int(optimisation.get("eval_interval", 25)),
+                "eval_batches": int(optimisation.get("eval_batches", 4)),
+            },
+            artifacts={"model": {"path": checkpoint.name, "sha256": file_sha256(checkpoint)}},
+        ),
         metrics={
             "training_loss": history.training_losses,
             "validation_loss": history.validation_losses,
             "validation_steps": history.validation_steps,
             "tokens_seen": history.tokens_seen,
+            "optimizer_steps": history.optimizer_steps,
             "checkpoint": stable_config["output"].get("checkpoint", str(checkpoint)),
         },
+        schema_version=3,
     )
     return record.write(_result_path(config))
 
@@ -133,11 +182,21 @@ def sample(config_path: Path, *, device_name: str = "auto", seed: int | None = N
     device = resolve_device(device_name)
     payload = torch.load(checkpoint, map_location=device, weights_only=False)
     checkpoint_config = payload.get("config", {})
-    model_type = payload.get("model_type", checkpoint_config.get("model", {}).get("model_type"))
-    if model_type != "bigram":
-        raise ValueError("sample currently supports bigram checkpoints")
-    vocab_size = payload.get("vocab_size", checkpoint_config.get("model", {}).get("vocab_size"))
-    model = BigramLanguageModel(int(vocab_size)).to(device)
+    model_type = payload.get(
+        "model_type", checkpoint_config.get("model", {}).get("model_type", "bigram")
+    )
+    if model_type == "bigram":
+        vocab_size = payload.get("vocab_size", checkpoint_config.get("model", {}).get("vocab_size"))
+        if vocab_size is None:
+            raise ValueError("bigram checkpoint has no vocabulary size")
+        model = BigramLanguageModel(int(vocab_size)).to(device)
+    elif model_type == "transformer":
+        architecture_payload = payload.get("architecture")
+        if not isinstance(architecture_payload, dict):
+            raise ValueError("transformer checkpoint has no architecture")
+        model = DecoderOnlyTransformer(GPTConfig(**architecture_payload)).to(device)
+    else:
+        raise ValueError(f"unsupported language-model checkpoint type: {model_type}")
     model.load_state_dict(payload.get("model", payload.get("state_dict")))
     model.eval()
     run_seed = int(seed if seed is not None else config.generation.get("seed", 17))
@@ -196,6 +255,7 @@ def run_sentiment_matrix(
     device_name: str,
     output: Path,
     resume: bool = False,
+    config_overrides: dict[str, dict[str, Any]] | None = None,
 ) -> Path:
     """Run a fixed-split seed matrix and write its paired comparison."""
     from transformer_lab.experiments.baseline import run_baseline
@@ -206,8 +266,30 @@ def run_sentiment_matrix(
     runs = []
     for path in config_paths:
         config = load_experiment_config(path)
+        overrides = (config_overrides or {}).get(str(path.resolve()), {})
+        if overrides:
+            config = replace(
+                config,
+                model={**dict(config.model), **dict(overrides.get("model", {}))},
+                data={**dict(config.data), **dict(overrides.get("data", {}))},
+                optimization={
+                    **dict(config.optimization),
+                    **dict(overrides.get("optimization", {})),
+                },
+                evaluation={
+                    **dict(config.evaluation),
+                    **dict(overrides.get("evaluation", {})),
+                },
+            )
         mode = str(config.model.get("mode"))
         if mode == "baseline":
+            baseline_config = config
+            if resume and Path(baseline_config.output["result"]).exists():
+                verify_run(
+                    Path(baseline_config.output["result"]),
+                    artifact_root=Path(baseline_config.output["directory"]),
+                    expected_config=baseline_config,
+                )
             result = run_baseline(config)
             runs.append(
                 RunOutput(
@@ -222,12 +304,10 @@ def run_sentiment_matrix(
             result = Path(seeded.output["result"])
             output_dir = Path(seeded.output["directory"])
             evaluation = output_dir / "evaluation.pt"
-            completed = (
-                resume
-                and result.exists()
-                and evaluation.exists()
-                and '"status": "completed"' in result.read_text(encoding="utf-8", errors="strict")
-            )
+            completed = False
+            if resume and result.exists():
+                verify_run(result, artifact_root=output_dir, expected_config=seeded)
+                completed = True
             if not completed:
                 result = run_sentiment_experiment(
                     seeded,
@@ -244,3 +324,84 @@ def run_sentiment_matrix(
                 )
             )
     return build_comparison(runs, output.resolve())
+
+
+def select_sentiment(protocol_path: Path, *, output: Path | None = None) -> Path:
+    """Freeze one validation-selected candidate per method without test access."""
+    from transformer_lab.experiments.selection import (
+        load_selection_protocol,
+        write_selection_manifest,
+    )
+
+    protocol, candidates = load_selection_protocol(protocol_path.resolve())
+    for candidate in candidates:
+        config = candidate.get("config")
+        if isinstance(config, str):
+            config_path = Path(config)
+            if not config_path.is_absolute():
+                candidate["config"] = str((protocol_path.resolve().parent / config_path).resolve())
+    destination = output or protocol_path.with_name("selection.json")
+    return write_selection_manifest(destination.resolve(), protocol=protocol, candidates=candidates)
+
+
+def evaluate_matrix(
+    selection_path: Path,
+    *,
+    seeds: list[int],
+    device_name: str,
+    output: Path,
+    resume: bool = False,
+) -> Path:
+    """Evaluate only the configurations frozen by a validated selection manifest."""
+    from transformer_lab.experiments.selection import load_selection_manifest
+
+    selection = load_selection_manifest(selection_path.resolve())
+    config_paths: list[Path] = []
+    config_overrides: dict[str, dict[str, Any]] = {}
+    for method, chosen in selection["selection"].items():
+        if chosen.get("status") != "completed":
+            raise RuntimeError(f"selection has no completed candidate for method {method}")
+        config = chosen.get("config")
+        if not isinstance(config, str) or not config:
+            raise ValueError(f"selection candidate for {method} has no config path")
+        config_path = Path(config)
+        if not config_path.is_absolute():
+            config_path = (selection_path.resolve().parent / config_path).resolve()
+        expected_digest = chosen.get("config_digest")
+        if expected_digest is not None:
+            if not isinstance(expected_digest, str):
+                raise ValueError(f"selection candidate for {method} has invalid config digest")
+            selected_config = load_experiment_config(config_path)
+            overrides = chosen.get("overrides", {})
+            if not isinstance(overrides, dict):
+                raise ValueError(f"selection candidate for {method} has invalid overrides")
+            selected_config = replace(
+                selected_config,
+                model={**dict(selected_config.model), **dict(overrides.get("model", {}))},
+                data={**dict(selected_config.data), **dict(overrides.get("data", {}))},
+                optimization={
+                    **dict(selected_config.optimization),
+                    **dict(overrides.get("optimization", {})),
+                },
+                evaluation={
+                    **dict(selected_config.evaluation),
+                    **dict(overrides.get("evaluation", {})),
+                },
+            )
+            if config_digest(selected_config) != expected_digest:
+                raise ValueError(f"selection candidate for {method} has a stale configuration")
+        config_paths.append(config_path)
+        overrides = chosen.get("overrides", {})
+        if not isinstance(overrides, dict):
+            raise ValueError(f"selection candidate for {method} has invalid overrides")
+        config_overrides[str(config_path)] = overrides
+    if not config_paths:
+        raise ValueError("selection manifest contains no configurations")
+    return run_sentiment_matrix(
+        config_paths,
+        seeds=seeds,
+        device_name=device_name,
+        output=output,
+        resume=resume,
+        config_overrides=config_overrides,
+    )
