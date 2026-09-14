@@ -66,6 +66,46 @@ def test_baseline_runner_records_a_model_and_metrics(tmp_path: Path, monkeypatch
     assert evaluate_sentiment_run(config, torch.device("cpu")) == result_path
 
 
+def test_baseline_candidate_writes_validation_only_summary(tmp_path: Path, monkeypatch) -> None:
+    examples = tuple(
+        Example(text=f"{label} token {index}", label=label, group_id=str(index))
+        for index, label in enumerate(["negative", "neutral", "positive"] * 3)
+    )
+
+    class SplitSentinel:
+        train = examples[:6]
+        validation = examples[6:8]
+
+        @property
+        def test(self):
+            raise AssertionError("validation-only baseline accessed the test partition")
+
+    archive = tmp_path / "archive.zip"
+    archive.write_bytes(b"fixture")
+    monkeypatch.setattr(baseline, "hf_hub_download", lambda *args, **kwargs: str(archive))
+    monkeypatch.setattr(baseline, "load_phrasebank", lambda *args, **kwargs: examples)
+    monkeypatch.setattr(baseline, "split_phrasebank", lambda *args, **kwargs: SplitSentinel())
+    config = _config(
+        tmp_path,
+        name="baseline",
+        model={"mode": "baseline"},
+        output={"result": str(tmp_path / "result.json"), "directory": str(tmp_path / "model")},
+    )
+    summary = baseline.run_baseline(
+        config,
+        validation_only=True,
+        summary_path=tmp_path / "summary.json",
+        candidate_id="baseline-candidate",
+    )
+
+    payload = json.loads(summary.read_text(encoding="utf-8"))
+    assert payload["status"] == "completed"
+    assert payload["candidate_id"] == "baseline-candidate"
+    assert "test" not in payload
+    assert payload["validation"]["macro_f1"] >= 0
+    assert payload["validation"]["loss"] > 0
+
+
 def test_evaluation_rejects_metrics_that_do_not_match_saved_artifacts(
     tmp_path: Path, monkeypatch
 ) -> None:

@@ -1,0 +1,511 @@
+{
+  "artifacts": {
+    "evaluation": {
+      "path": "evaluation.pt",
+      "sha256": "5c75131089386f6ea13d346938628be976e5861edb7b9aa6dd96800d8d72c5c8"
+    },
+    "model": {
+      "path": "model.pt",
+      "sha256": "3684e4cf6b27a94f36051248ca240aa73dd39049a13434be13ee6ba29ea30625"
+    }
+  },
+  "config": {
+    "data": {
+      "dataset_revision": "8d3fe0c36d5feec6b3cc5e455b0fcb4820fb9964",
+      "max_length": 64,
+      "split_seed": 17,
+      "subset": "75Agree"
+    },
+    "evaluation": {
+      "bootstrap_samples": 1000,
+      "seed": 41
+    },
+    "experiment": {
+      "kind": "sentiment",
+      "name": "financial-phrasebank-full-seed-41"
+    },
+    "generation": {},
+    "model": {
+      "base_model": "openai-community/gpt2",
+      "mode": "full",
+      "model_revision": "607a30d783dfa663caf39e06633721c8d4cfcd7e",
+      "num_labels": 3
+    },
+    "optimization": {
+      "amp": true,
+      "batch_size": 1,
+      "epochs": 3,
+      "gradient_accumulation_steps": 16,
+      "learning_rate": 2e-05,
+      "max_grad_norm": 1.0,
+      "weight_decay": 0.01
+    },
+    "output": {
+      "directory": "../../reports/results/v3/runs/full-seed-41",
+      "result": "../../reports/results/v3/runs/full-seed-41.json"
+    }
+  },
+  "data": {
+    "archive_member": "FinancialPhraseBank-v1.0/Sentences_75Agree.txt",
+    "archive_sha256": "0e1a06c4900fdae46091d031068601e3773ba067c7cecb5b0da1dcba5ce989a6",
+    "class_counts": {
+      "negative": 420,
+      "neutral": 2146,
+      "positive": 887
+    },
+    "examples": 3453,
+    "repository": "financial_phrasebank",
+    "revision": "8d3fe0c36d5feec6b3cc5e455b0fcb4820fb9964",
+    "split": {
+      "sha256": "f9431e8d61a365a385c865796967754eb4da00e8e05cc3bd94a1c03f53727cf2",
+      "test": {
+        "class_counts": {
+          "negative": 63,
+          "neutral": 322,
+          "positive": 133
+        },
+        "rows": 518,
+        "sha256": "1861ba36378752933f12867b540fb4c09edf25557b779771a54fbf92bed0dd57"
+      },
+      "train": {
+        "class_counts": {
+          "negative": 294,
+          "neutral": 1502,
+          "positive": 621
+        },
+        "rows": 2417,
+        "sha256": "b1d026ce7ad1a85feddee7261fd6990541b1067c9411ff69937be657f80f846d"
+      },
+      "validation": {
+        "class_counts": {
+          "negative": 63,
+          "neutral": 322,
+          "positive": 133
+        },
+        "rows": 518,
+        "sha256": "2e9fdd9fde1f1951c610ad69a8894a8662748bc4ad29adffe7a8f44fa0a2d562"
+      }
+    },
+    "unique_sentence_groups": 3448
+  },
+  "environment": {
+    "cuda": "12.8",
+    "cuda_available": true,
+    "device": "cuda",
+    "gpu": "NVIDIA GeForce GTX 1650",
+    "gpu_memory_bytes": 4294639616,
+    "packages": {
+      "joblib": "1.5.3",
+      "numpy": "2.5.2",
+      "scikit-learn": "1.9.0",
+      "torch": "2.9.0+cu128",
+      "transformers": "4.57.6"
+    },
+    "platform": "Windows",
+    "python": "3.12.10",
+    "torch": "2.9.0+cu128"
+  },
+  "error": null,
+  "manifest": {
+    "artifacts": {
+      "evaluation": {
+        "path": "evaluation.pt",
+        "sha256": "5c75131089386f6ea13d346938628be976e5861edb7b9aa6dd96800d8d72c5c8"
+      },
+      "model": {
+        "path": "model.pt",
+        "sha256": "3684e4cf6b27a94f36051248ca240aa73dd39049a13434be13ee6ba29ea30625"
+      }
+    },
+    "config_sha256": "2051d586fbea9a8acd09bf1a78e35a17dcab82e4d86bfcfb30152dd45aaed439",
+    "data": {
+      "ordered_evaluation_rows": 518,
+      "split": {
+        "sha256": "f9431e8d61a365a385c865796967754eb4da00e8e05cc3bd94a1c03f53727cf2",
+        "test": {
+          "class_counts": {
+            "negative": 63,
+            "neutral": 322,
+            "positive": 133
+          },
+          "rows": 518,
+          "sha256": "1861ba36378752933f12867b540fb4c09edf25557b779771a54fbf92bed0dd57"
+        },
+        "train": {
+          "class_counts": {
+            "negative": 294,
+            "neutral": 1502,
+            "positive": 621
+          },
+          "rows": 2417,
+          "sha256": "b1d026ce7ad1a85feddee7261fd6990541b1067c9411ff69937be657f80f846d"
+        },
+        "validation": {
+          "class_counts": {
+            "negative": 63,
+            "neutral": 322,
+            "positive": 133
+          },
+          "rows": 518,
+          "sha256": "2e9fdd9fde1f1951c610ad69a8894a8662748bc4ad29adffe7a8f44fa0a2d562"
+        }
+      }
+    },
+    "effective_config": {
+      "data": {
+        "dataset_revision": "8d3fe0c36d5feec6b3cc5e455b0fcb4820fb9964",
+        "max_length": 64,
+        "split_seed": 17,
+        "subset": "75Agree"
+      },
+      "evaluation": {
+        "bootstrap_samples": 1000,
+        "seed": 41
+      },
+      "experiment": {
+        "kind": "sentiment",
+        "name": "financial-phrasebank-full-seed-41"
+      },
+      "generation": {},
+      "model": {
+        "base_model": "openai-community/gpt2",
+        "mode": "full",
+        "model_revision": "607a30d783dfa663caf39e06633721c8d4cfcd7e",
+        "num_labels": 3
+      },
+      "optimization": {
+        "amp": true,
+        "batch_size": 1,
+        "epochs": 3,
+        "gradient_accumulation_steps": 16,
+        "learning_rate": 2e-05,
+        "max_grad_norm": 1.0,
+        "weight_decay": 0.01
+      },
+      "output": {
+        "directory": "../../reports/results/v3/runs/full-seed-41",
+        "result": "../../reports/results/v3/runs/full-seed-41.json"
+      }
+    },
+    "evaluation": {
+      "bootstrap_samples": 1000,
+      "seed": 41
+    },
+    "provenance": {
+      "config_sha256": "c6399df4544b46b7080972e15944ec344bf4186d5009cccac80e1734d3ace57b",
+      "git_commit": "9f79862e35bb89dbdee8e54acc58da57892fb684",
+      "git_dirty": true,
+      "source_tree_sha256": "eee9c36b5485db496328fb98b935fe3cfe1ac1cb287b9a73dbbd0e234a645299",
+      "source_tree_status": "available"
+    },
+    "schema_version": 3
+  },
+  "memory": {
+    "peak_cuda_allocated_bytes": 2526663168,
+    "peak_cuda_reserved_bytes": 2789212160
+  },
+  "metrics": {
+    "best_epoch": 3,
+    "calibration": {
+      "after": {
+        "brier_score": 0.1349042475871669,
+        "expected_calibration_error": 0.02374379479940937
+      },
+      "before": {
+        "brier_score": 0.15250797274613465,
+        "expected_calibration_error": 0.06927959500132383
+      },
+      "method": "temperature_scaling",
+      "validation_temperature": 2.0499938597770804
+    },
+    "test": {
+      "accuracy": 0.9073359073359073,
+      "brier_score": 0.1349042475871669,
+      "confusion_matrix": [
+        [
+          46,
+          7,
+          10
+        ],
+        [
+          3,
+          305,
+          14
+        ],
+        [
+          0,
+          14,
+          119
+        ]
+      ],
+      "expected_calibration_error": 0.02374379479940937,
+      "macro_f1": 0.8750351455665465,
+      "macro_f1_bootstrap_ci": {
+        "lower": 0.8371147686002716,
+        "upper": 0.9094215731136857
+      },
+      "per_class": {
+        "0": {
+          "f1": 0.8214285714285714,
+          "precision": 0.9387755102040817,
+          "recall": 0.7301587301587301,
+          "support": 63
+        },
+        "1": {
+          "f1": 0.941358024691358,
+          "precision": 0.9355828220858896,
+          "recall": 0.9472049689440993,
+          "support": 322
+        },
+        "2": {
+          "f1": 0.8623188405797102,
+          "precision": 0.8321678321678322,
+          "recall": 0.8947368421052632,
+          "support": 133
+        }
+      },
+      "probabilities_recorded": true
+    },
+    "validation": {
+      "accuracy": 0.9266409266409267,
+      "brier_score": 0.12137499470178426,
+      "confusion_matrix": [
+        [
+          53,
+          5,
+          5
+        ],
+        [
+          0,
+          309,
+          13
+        ],
+        [
+          2,
+          13,
+          118
+        ]
+      ],
+      "expected_calibration_error": 0.0524407867414151,
+      "loss": 0.32292611530717136,
+      "macro_f1": 0.9092875704305357,
+      "macro_f1_bootstrap_ci": {
+        "lower": 0.8733175607162258,
+        "upper": 0.9371121233226931
+      },
+      "per_class": {
+        "0": {
+          "f1": 0.8983050847457628,
+          "precision": 0.9636363636363636,
+          "recall": 0.8412698412698413,
+          "support": 63
+        },
+        "1": {
+          "f1": 0.9522342064714946,
+          "precision": 0.944954128440367,
+          "recall": 0.9596273291925466,
+          "support": 322
+        },
+        "2": {
+          "f1": 0.8773234200743495,
+          "precision": 0.8676470588235294,
+          "recall": 0.8872180451127819,
+          "support": 133
+        }
+      },
+      "probabilities_recorded": true
+    },
+    "validation_candidates": [
+      {
+        "epoch": 1,
+        "metrics": {
+          "accuracy": 0.8976833976833977,
+          "brier_score": 0.1668863063185011,
+          "confusion_matrix": [
+            [
+              53,
+              6,
+              4
+            ],
+            [
+              2,
+              296,
+              24
+            ],
+            [
+              8,
+              9,
+              116
+            ]
+          ],
+          "expected_calibration_error": 0.04422383637501925,
+          "loss": 0.31958481656535576,
+          "macro_f1": 0.8713480118513739,
+          "macro_f1_bootstrap_ci": {
+            "lower": 0.8281987571671154,
+            "upper": 0.89928166292556
+          },
+          "per_class": {
+            "0": {
+              "f1": 0.8412698412698413,
+              "precision": 0.8412698412698413,
+              "recall": 0.8412698412698413,
+              "support": 63
+            },
+            "1": {
+              "f1": 0.9352290679304898,
+              "precision": 0.9517684887459807,
+              "recall": 0.9192546583850931,
+              "support": 322
+            },
+            "2": {
+              "f1": 0.8375451263537906,
+              "precision": 0.8055555555555556,
+              "recall": 0.8721804511278195,
+              "support": 133
+            }
+          },
+          "probabilities_recorded": true
+        }
+      },
+      {
+        "epoch": 2,
+        "metrics": {
+          "accuracy": 0.916988416988417,
+          "brier_score": 0.1439836537704058,
+          "confusion_matrix": [
+            [
+              51,
+              9,
+              3
+            ],
+            [
+              0,
+              315,
+              7
+            ],
+            [
+              6,
+              18,
+              109
+            ]
+          ],
+          "expected_calibration_error": 0.058572982211370715,
+          "loss": 0.3027430395865713,
+          "macro_f1": 0.8879581819340855,
+          "macro_f1_bootstrap_ci": {
+            "lower": 0.853107922030768,
+            "upper": 0.9156102780246276
+          },
+          "per_class": {
+            "0": {
+              "f1": 0.85,
+              "precision": 0.8947368421052632,
+              "recall": 0.8095238095238095,
+              "support": 63
+            },
+            "1": {
+              "f1": 0.9487951807228916,
+              "precision": 0.9210526315789473,
+              "recall": 0.9782608695652174,
+              "support": 322
+            },
+            "2": {
+              "f1": 0.8650793650793651,
+              "precision": 0.9159663865546218,
+              "recall": 0.8195488721804511,
+              "support": 133
+            }
+          },
+          "probabilities_recorded": true
+        }
+      },
+      {
+        "epoch": 3,
+        "metrics": {
+          "accuracy": 0.9266409266409267,
+          "brier_score": 0.12137499470178426,
+          "confusion_matrix": [
+            [
+              53,
+              5,
+              5
+            ],
+            [
+              0,
+              309,
+              13
+            ],
+            [
+              2,
+              13,
+              118
+            ]
+          ],
+          "expected_calibration_error": 0.0524407867414151,
+          "loss": 0.32292611530717136,
+          "macro_f1": 0.9092875704305357,
+          "macro_f1_bootstrap_ci": {
+            "lower": 0.8733175607162258,
+            "upper": 0.9371121233226931
+          },
+          "per_class": {
+            "0": {
+              "f1": 0.8983050847457628,
+              "precision": 0.9636363636363636,
+              "recall": 0.8412698412698413,
+              "support": 63
+            },
+            "1": {
+              "f1": 0.9522342064714946,
+              "precision": 0.944954128440367,
+              "recall": 0.9596273291925466,
+              "support": 322
+            },
+            "2": {
+              "f1": 0.8773234200743495,
+              "precision": 0.8676470588235294,
+              "recall": 0.8872180451127819,
+              "support": 133
+            }
+          },
+          "probabilities_recorded": true
+        }
+      }
+    ]
+  },
+  "model": {
+    "id": "openai-community/gpt2",
+    "mode": "full",
+    "revision": "607a30d783dfa663caf39e06633721c8d4cfcd7e"
+  },
+  "optimization": {
+    "amp": true,
+    "batch_size": 1,
+    "epochs": 3,
+    "gradient_accumulation_steps": 16,
+    "learning_rate": 2e-05,
+    "max_grad_norm": 1.0,
+    "weight_decay": 0.01
+  },
+  "parameters": {
+    "total": 124442115,
+    "trainable": 124442115,
+    "trainable_share": 1.0
+  },
+  "provenance": {
+    "config_sha256": "c6399df4544b46b7080972e15944ec344bf4186d5009cccac80e1734d3ace57b",
+    "git_commit": "9f79862e35bb89dbdee8e54acc58da57892fb684",
+    "git_dirty": true,
+    "source_tree_sha256": "eee9c36b5485db496328fb98b935fe3cfe1ac1cb287b9a73dbbd0e234a645299",
+    "source_tree_status": "available"
+  },
+  "run_id": "financial-phrasebank-full-seed-41",
+  "schema_version": 3,
+  "status": "completed",
+  "timestamp_utc": "2026-09-14T11:43:57.105154Z",
+  "timing": {
+    "examples_per_second": 6.435890962532038,
+    "train_seconds": 1126.6505356000125
+  }
+}

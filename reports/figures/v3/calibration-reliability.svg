@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="460" viewBox="0 0 760 460">
+<title>LoRA seed-17 calibration reliability before and after scaling</title>
+<rect width="100%" height="100%" fill="white"/>
+<text x="30" y="30" font-family="sans-serif" font-size="20" fill="#16212b">LoRA seed-17 calibration reliability before and after scaling</text>
+<line x1="80" y1="390" x2="700" y2="390" stroke="#16212b"/>
+<line x1="80" y1="60" x2="80" y2="390" stroke="#16212b"/>
+<line x1="80" y1="390" x2="700" y2="60" stroke="#9aa6b2" stroke-dasharray="5,5"/>
+<text x="390" y="435" text-anchor="middle" font-family="sans-serif">mean confidence</text>
+<text x="18" y="235" transform="rotate(-90 18 235)" text-anchor="middle" font-family="sans-serif">accuracy</text>
+<text x="520" y="80" font-family="sans-serif" fill="#b23a48">before</text>
+<text x="520" y="100" font-family="sans-serif" fill="#247ba0">after</text>
+<circle cx="376.6" cy="280.0" r="5" fill="#b23a48"/><text x="383.6" y="273.0" font-family="sans-serif" font-size="10">n=3</text>
+<circle cx="422.0" cy="206.7" r="5" fill="#b23a48"/><text x="429.0" y="199.7" font-family="sans-serif" font-size="10">n=18</text>
+<circle cx="488.8" cy="225.0" r="5" fill="#b23a48"/><text x="495.8" y="218.0" font-family="sans-serif" font-size="10">n=22</text>
+<circle cx="544.3" cy="91.4" r="5" fill="#b23a48"/><text x="551.3" y="84.4" font-family="sans-serif" font-size="10">n=21</text>
+<circle cx="613.3" cy="120.0" r="5" fill="#b23a48"/><text x="620.3" y="113.0" font-family="sans-serif" font-size="10">n=44</text>
+<circle cx="689.1" cy="66.4" r="5" fill="#b23a48"/><text x="696.1" y="59.4" font-family="sans-serif" font-size="10">n=410</text>
+<circle cx="378.4" cy="280.0" r="5" fill="#247ba0"/><text x="385.4" y="273.0" font-family="sans-serif" font-size="10">n=3</text>
+<circle cx="418.2" cy="214.0" r="5" fill="#247ba0"/><text x="425.2" y="207.0" font-family="sans-serif" font-size="10">n=15</text>
+<circle cx="485.5" cy="217.8" r="5" fill="#247ba0"/><text x="492.5" y="210.8" font-family="sans-serif" font-size="10">n=23</text>
+<circle cx="544.9" cy="105.0" r="5" fill="#247ba0"/><text x="551.9" y="98.0" font-family="sans-serif" font-size="10">n=22</text>
+<circle cx="614.2" cy="117.8" r="5" fill="#247ba0"/><text x="621.2" y="110.8" font-family="sans-serif" font-size="10">n=40</text>
+<circle cx="689.6" cy="67.2" r="5" fill="#247ba0"/><text x="696.6" y="60.2" font-family="sans-serif" font-size="10">n=415</text>
+</svg>

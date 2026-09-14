@@ -18,7 +18,7 @@ method = "head_only"
 order = 0
 learning_rate = 0.001
 config = "head-only-gpt2-small.toml"
-summary = "../../artifacts/selection/v3/head-only-lr-1e-3/validation-summary.json"
+summary = "../../reports/results/v3/candidates/head-only-lr-1e-3.json"
 
 [[candidates]]
 candidate_id = "head-only-lr-5e-3"
@@ -26,7 +26,7 @@ method = "head_only"
 order = 1
 learning_rate = 0.005
 config = "head-only-gpt2-small.toml"
-summary = "../../artifacts/selection/v3/head-only-lr-5e-3/validation-summary.json"
+summary = "../../reports/results/v3/candidates/head-only-lr-5e-3.json"
 
 [[candidates]]
 candidate_id = "head-only-lr-1e-2"
@@ -34,7 +34,7 @@ method = "head_only"
 order = 2
 learning_rate = 0.01
 config = "head-only-gpt2-small.toml"
-summary = "../../artifacts/selection/v3/head-only-lr-1e-2/validation-summary.json"
+summary = "../../reports/results/v3/candidates/head-only-lr-1e-2.json"
 
 [[candidates]]
 candidate_id = "lora-r4-lr-5e-5"
@@ -42,7 +42,7 @@ method = "lora"
 order = 0
 learning_rate = 0.00005
 config = "lora-gpt2-small.toml"
-summary = "../../artifacts/selection/v3/lora-r4-lr-5e-5/validation-summary.json"
+summary = "../../reports/results/v3/candidates/lora-r4-lr-5e-5.json"
 
 [[candidates]]
 candidate_id = "lora-r4-lr-2e-4"
@@ -50,7 +50,7 @@ method = "lora"
 order = 1
 learning_rate = 0.0002
 config = "lora-gpt2-small.toml"
-summary = "../../artifacts/selection/v3/lora-r4-lr-2e-4/validation-summary.json"
+summary = "../../reports/results/v3/candidates/lora-r4-lr-2e-4.json"
 
 [[candidates]]
 candidate_id = "lora-r4-lr-1e-3"
@@ -58,7 +58,7 @@ method = "lora"
 order = 2
 learning_rate = 0.001
 config = "lora-gpt2-small.toml"
-summary = "../../artifacts/selection/v3/lora-r4-lr-1e-3/validation-summary.json"
+summary = "../../reports/results/v3/candidates/lora-r4-lr-1e-3.json"
 
 [[candidates]]
 candidate_id = "full-lr-5e-6"
@@ -66,7 +66,7 @@ method = "full"
 order = 0
 learning_rate = 0.000005
 config = "full-gpt2-small.toml"
-summary = "../../artifacts/selection/v3/full-lr-5e-6/validation-summary.json"
+summary = "../../reports/results/v3/candidates/full-lr-5e-6.json"
 
 [[candidates]]
 candidate_id = "full-lr-1e-5"
@@ -74,7 +74,7 @@ method = "full"
 order = 1
 learning_rate = 0.00001
 config = "full-gpt2-small.toml"
-summary = "../../artifacts/selection/v3/full-lr-1e-5/validation-summary.json"
+summary = "../../reports/results/v3/candidates/full-lr-1e-5.json"
 
 [[candidates]]
 candidate_id = "full-lr-2e-5"
@@ -82,7 +82,7 @@ method = "full"
 order = 2
 learning_rate = 0.00002
 config = "full-gpt2-small.toml"
-summary = "../../artifacts/selection/v3/full-lr-2e-5/validation-summary.json"
+summary = "../../reports/results/v3/candidates/full-lr-2e-5.json"
 
 [[candidates]]
 candidate_id = "tfidf-c-0.1"
@@ -90,7 +90,7 @@ method = "baseline"
 order = 0
 c = 0.1
 config = "baseline.toml"
-summary = "../../artifacts/selection/v3/tfidf-c-0.1/validation-summary.json"
+summary = "../../reports/results/v3/candidates/tfidf-c-0.1.json"
 
 [[candidates]]
 candidate_id = "tfidf-c-1"
@@ -98,7 +98,7 @@ method = "baseline"
 order = 1
 c = 1.0
 config = "baseline.toml"
-summary = "../../artifacts/selection/v3/tfidf-c-1/validation-summary.json"
+summary = "../../reports/results/v3/candidates/tfidf-c-1.json"
 
 [[candidates]]
 candidate_id = "tfidf-c-10"
@@ -106,4 +106,4 @@ method = "baseline"
 order = 2
 c = 10.0
 config = "baseline.toml"
-summary = "../../artifacts/selection/v3/tfidf-c-10/validation-summary.json"
+summary = "../../reports/results/v3/candidates/tfidf-c-10.json"

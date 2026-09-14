@@ -180,6 +180,28 @@ status = "failed"
     assert candidates[1]["status"] == "failed"
 
 
+def test_selection_protocol_can_load_candidates_before_summaries_exist(tmp_path) -> None:
+    path = tmp_path / "protocol.toml"
+    path.write_text(
+        """
+[protocol]
+name = "fixture"
+
+[[candidates]]
+candidate_id = "head-1"
+method = "head_only"
+order = 0
+config = "config.toml"
+summary = "missing/summary.json"
+""",
+        encoding="utf-8",
+    )
+
+    _, candidates = load_selection_protocol(path, allow_missing_summaries=True)
+
+    assert candidates[0]["summary_path"].endswith("missing\\summary.json")
+
+
 @pytest.mark.parametrize(
     "payload, message",
     [

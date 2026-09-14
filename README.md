@@ -25,6 +25,8 @@ The project asks whether a small, readable transformer can reproduce a public GP
 
 The result summaries are tracked in [`reports/results`](reports/results). Raw data, pretrained weights, checkpoints, and transient run files are ignored. The GPT-2 parity summary uses the pinned `openai-community/gpt2` revision `607a30d783dfa663caf39e06633721c8d4cfcd7e`. The Financial PhraseBank archive uses dataset revision `8d3fe0c36d5feec6b3cc5e455b0fcb4820fb9964`.
 
+The exploratory v3 follow-up freezes hyperparameters from validation-only candidate runs before evaluating seeds 17, 23, and 41. Its checked table is [`reports/generated-results-v3.md`](reports/generated-results-v3.md), with the [selection manifest](reports/results/v3/selection.json), [12 candidate summaries](reports/results/v3/candidates), and replayable [per-seed records](reports/results/v3/runs). It is a post-selection follow-up on the same fixed test partition, not an independent holdout.
+
 ## Install
 
 Python 3.11 or 3.12 is supported.
@@ -128,7 +130,7 @@ The implementation is intended for inspection and reproducible small runs. It is
 
 The three-seed matrix is stronger than a single run, but it is still one dataset, one GPT-2 scale and one maximum sequence length. The labels are sentence-level judgements from the original annotator pool, not current market impact. The next useful extension is a time-based financial-news holdout, followed by a larger-model comparison if the hardware budget allows it.
 
-See the [derivations](reports/derivations.md), [generated historical table](reports/generated-results.md), [parameter/accuracy figure](reports/figures/macro-f1-vs-parameters.svg), [calibration figure](reports/figures/calibration-reliability.svg), [scratch learning curve](reports/figures/scratch-transformer-learning-curve.svg), and the [interview walkthrough](docs/walkthrough.md) for the tensor-level explanation and the limits of the evidence. Historical results are fixed-profile evidence; a validation-selected follow-up, when executed, will be labelled exploratory rather than treated as an independent holdout.
+See the [derivations](reports/derivations.md), [generated historical table](reports/generated-results.md), [generated v3 table](reports/generated-results-v3.md), [historical figures](reports/figures), [v3 figures](reports/figures/v3), and the [interview walkthrough](docs/walkthrough.md) for the tensor-level explanation and the limits of the evidence. Historical results are fixed-profile evidence; the validation-selected v3 follow-up is labelled exploratory rather than treated as an independent holdout.
 
 ## Repository map
 

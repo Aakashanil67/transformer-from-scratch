@@ -9,6 +9,7 @@ import random
 import re
 import time
 from collections import Counter
+from collections.abc import Sequence
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -34,8 +35,9 @@ from transformer_lab.evaluation.classification import (
     apply_temperature,
     classification_metrics,
     fit_temperature,
+    multiclass_log_loss,
 )
-from transformer_lab.experiments.manifests import build_manifest, resolve_run
+from transformer_lab.experiments.manifests import build_manifest, config_digest, resolve_run
 from transformer_lab.experiments.records import ExperimentRecord
 from transformer_lab.experiments.runtime import (
     environment_metadata,
@@ -97,6 +99,13 @@ def _encode(tokenizer: Any, examples: list[Any], max_length: int) -> tuple[Tenso
     )
     labels = torch.tensor([LABELS.index(example.label) for example in examples], dtype=torch.long)
     return encoded["input_ids"], encoded["attention_mask"], labels
+
+
+def _training_partitions(
+    splits: Any, *, validation_only: bool
+) -> tuple[Sequence[Any], Sequence[Any], Sequence[Any] | None]:
+    """Return only the partitions needed by a training/evaluation mode."""
+    return splits.train, splits.validation, None if validation_only else splits.test
 
 
 def _predict(
@@ -203,13 +212,18 @@ def _train_transformer(
                 scaler.update()
                 optimizer.zero_grad(set_to_none=True)
             losses.append(float(loss.detach().cpu()))
-        targets, predictions, probabilities, _ = _predict(model, validation_loader, device)
+        targets, predictions, probabilities, raw_logits = _predict(model, validation_loader, device)
         validation = classification_metrics(
             targets,
             predictions,
             labels=list(range(len(LABELS))),
             probabilities=probabilities,
             bootstrap_samples=100,
+        )
+        validation["loss"] = multiclass_log_loss(
+            targets,
+            apply_temperature(raw_logits, 1.0),
+            labels=list(range(len(LABELS))),
         )
         candidates.append({"epoch": epoch, "metrics": validation})
         score = float(validation["macro_f1"])
@@ -257,6 +271,85 @@ def _train_transformer(
     }
 
 
+def _write_validation_summary(
+    path: Path,
+    *,
+    config: ExperimentConfig,
+    method: str,
+    validation: dict[str, Any],
+    validation_candidates: list[dict[str, Any]],
+    train_seconds: float,
+    data: dict[str, Any],
+    artifacts: dict[str, Any] | None = None,
+    status: str = "completed",
+    error: dict[str, Any] | None = None,
+    candidate_id: str | None = None,
+    identity_config: ExperimentConfig | None = None,
+) -> Path:
+    """Persist a candidate record whose payload contains validation data only."""
+    identity = identity_config or config
+    payload: dict[str, Any] = {
+        "schema_version": 1,
+        "kind": "sentiment-candidate",
+        "candidate_id": candidate_id or str(config.experiment["name"]),
+        "method": method,
+        "status": status,
+        "effective_config": effective_config(identity),
+        "config_digest": config_digest(identity),
+        "data": data,
+        "timing": {"train_seconds": train_seconds},
+    }
+    if status == "completed":
+        payload.update(
+            {
+                "validation": validation,
+                "validation_candidates": validation_candidates,
+                "artifacts": artifacts or {},
+            }
+        )
+    if error is not None:
+        payload["error"] = error
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True, allow_nan=False) + "\n", encoding="utf-8"
+    )
+    return path
+
+
+def _checkpoint_payload(
+    model: SentimentClassifier,
+    *,
+    mode: str,
+    revision: str,
+    config: ExperimentConfig,
+    max_length: int,
+    calibration_temperature: float = 1.0,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "schema_version": 2,
+        "state_dict": model.state_dict(),
+        "architecture": asdict(model.backbone.config),
+        "mode": mode,
+        "revision": revision,
+        "tokenizer_id": config.model.get("base_model", "openai-community/gpt2"),
+        "tokenizer_revision": revision,
+        "max_length": max_length,
+        "labels": LABELS,
+        "num_labels": len(LABELS),
+        "calibration_temperature": calibration_temperature,
+    }
+    if mode == "lora":
+        payload["lora"] = {
+            "rank": int(config.model.get("lora_rank", 4)),
+            "alpha": float(config.model.get("lora_alpha", 8)),
+            "dropout": float(config.model.get("lora_dropout", 0)),
+            "target_modules": tuple(
+                config.model.get("target_modules", ["attention.c_attn", "attention.c_proj"])
+            ),
+        }
+    return payload
+
+
 def run_sentiment_experiment(
     config: ExperimentConfig,
     *,
@@ -291,12 +384,84 @@ def run_sentiment_experiment(
         return result_path
 
 
+def run_sentiment_candidate(
+    config: ExperimentConfig,
+    *,
+    device: torch.device,
+    summary_path: Path,
+    seed: int | None = None,
+    resume: bool = False,
+    candidate_id: str | None = None,
+    identity_config: ExperimentConfig | None = None,
+) -> Path:
+    """Train one candidate and write a validation-only summary."""
+    config = resolve_run(config, seed=seed)
+    mode = str(config.model.get("mode", "lora"))
+    if mode == "baseline":
+        from transformer_lab.experiments.baseline import run_baseline
+
+        return run_baseline(
+            config,
+            validation_only=True,
+            summary_path=summary_path,
+            identity_config=identity_config,
+            candidate_id=candidate_id,
+        )
+    if device.type != "cuda":
+        return _write_validation_summary(
+            summary_path,
+            config=config,
+            method=mode,
+            validation={},
+            validation_candidates=[],
+            train_seconds=0.0,
+            data={"train_rows": None, "validation_rows": None},
+            status="unavailable",
+            error={
+                "type": "PreflightError",
+                "message": "GPT-2 candidate training requires CUDA for this protocol",
+            },
+            candidate_id=candidate_id,
+            identity_config=identity_config,
+        )
+    try:
+        return _execute_sentiment_experiment(
+            config,
+            device=device,
+            seed=seed,
+            resume=resume,
+            validation_only=True,
+            validation_summary_path=summary_path,
+            candidate_id=candidate_id,
+            identity_config=identity_config,
+        )
+    except torch.OutOfMemoryError as error:
+        torch.cuda.empty_cache()
+        return _write_validation_summary(
+            summary_path,
+            config=config,
+            method=mode,
+            validation={},
+            validation_candidates=[],
+            train_seconds=0.0,
+            data={"train_rows": None, "validation_rows": None},
+            status="failed",
+            error={"type": type(error).__name__, "message": str(error)},
+            candidate_id=candidate_id,
+            identity_config=identity_config,
+        )
+
+
 def _execute_sentiment_experiment(
     config: ExperimentConfig,
     *,
     device: torch.device,
     seed: int | None = None,
     resume: bool = False,
+    validation_only: bool = False,
+    validation_summary_path: Path | None = None,
+    candidate_id: str | None = None,
+    identity_config: ExperimentConfig | None = None,
 ) -> Path:
     """Execute one transformer sentiment mode or record a hardware preflight failure."""
     mode = str(config.model.get("mode", "lora"))
@@ -335,20 +500,23 @@ def _execute_sentiment_experiment(
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     max_length = int(config.data.get("max_length", 64))
+    train_examples, validation_examples, evaluation_examples = _training_partitions(
+        splits, validation_only=validation_only
+    )
     encoded = [
         _encode(tokenizer, list(partition), max_length)
-        for partition in (splits.train, splits.validation, splits.test)
+        for partition in (train_examples, validation_examples)
     ]
+    if evaluation_examples is not None:
+        encoded.append(_encode(tokenizer, list(evaluation_examples), max_length))
     train_dataset = TensorDataset(*encoded[0])
     validation_dataset = TensorDataset(*encoded[1])
-    test_dataset = TensorDataset(*encoded[2])
     batch_size = int(config.optimization.get("batch_size", 1))
     train_generator = torch.Generator().manual_seed(run_seed)
     train_loader = DataLoader(
         train_dataset, batch_size=batch_size, shuffle=True, generator=train_generator
     )
     validation_loader = DataLoader(validation_dataset, batch_size=batch_size)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size)
     reference = AutoModelForCausalLM.from_pretrained(
         str(config.model.get("base_model", "openai-community/gpt2")),
         revision=revision,
@@ -399,6 +567,44 @@ def _execute_sentiment_experiment(
         resume=resume,
     )
     validation_targets, _, _, validation_logits = _predict(model, validation_loader, device)
+    result["validation"]["loss"] = multiclass_log_loss(
+        validation_targets,
+        apply_temperature(validation_logits, 1.0),
+        labels=list(range(len(LABELS))),
+    )
+    if validation_only:
+        checkpoint = output_directory / "model.pt"
+        _atomic_torch_save(
+            _checkpoint_payload(
+                model,
+                mode=mode,
+                revision=revision,
+                config=config,
+                max_length=max_length,
+            ),
+            checkpoint,
+        )
+        summary_path = validation_summary_path or output_directory / "validation-summary.json"
+        return _write_validation_summary(
+            summary_path,
+            config=config,
+            method=mode,
+            validation=result["validation"],
+            validation_candidates=result["validation_candidates"],
+            train_seconds=float(result["train_seconds"]),
+            data={
+                "repository": REPOSITORY,
+                "revision": config.data.get("dataset_revision"),
+                "subset": config.data.get("subset", "75Agree"),
+                "train_rows": len(train_examples),
+                "validation_rows": len(validation_examples),
+            },
+            artifacts={"model": {"path": checkpoint.name, "sha256": file_sha256(checkpoint)}},
+            candidate_id=candidate_id,
+            identity_config=identity_config,
+        )
+    test_dataset = TensorDataset(*encoded[2])
+    test_loader = DataLoader(test_dataset, batch_size=batch_size)
     calibration_temperature = fit_temperature(validation_logits, validation_targets)
     targets, predictions, uncalibrated_probabilities, test_logits = _predict(
         model, test_loader, device
@@ -422,28 +628,14 @@ def _execute_sentiment_experiment(
     )
     counts = parameter_report(model)
     checkpoint = output_directory / "model.pt"
-    checkpoint_payload = {
-        "schema_version": 2,
-        "state_dict": model.state_dict(),
-        "architecture": asdict(model.backbone.config),
-        "mode": mode,
-        "revision": revision,
-        "tokenizer_id": config.model.get("base_model", "openai-community/gpt2"),
-        "tokenizer_revision": revision,
-        "max_length": max_length,
-        "labels": LABELS,
-        "num_labels": len(LABELS),
-        "calibration_temperature": calibration_temperature,
-    }
-    if mode == "lora":
-        checkpoint_payload["lora"] = {
-            "rank": int(config.model.get("lora_rank", 4)),
-            "alpha": float(config.model.get("lora_alpha", 8)),
-            "dropout": float(config.model.get("lora_dropout", 0)),
-            "target_modules": tuple(
-                config.model.get("target_modules", ["attention.c_attn", "attention.c_proj"])
-            ),
-        }
+    checkpoint_payload = _checkpoint_payload(
+        model,
+        mode=mode,
+        revision=revision,
+        config=config,
+        max_length=max_length,
+        calibration_temperature=calibration_temperature,
+    )
     _atomic_torch_save(checkpoint_payload, checkpoint)
     _atomic_torch_save(
         {

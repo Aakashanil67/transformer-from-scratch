@@ -1,0 +1,272 @@
+{
+  "artifacts": {
+    "model": {
+      "path": "model.pt",
+      "sha256": "8e5745bcdacef6012d531dbdd2ab3716c09ae1b3ce64a5d180644a25108580c6"
+    }
+  },
+  "candidate_id": "lora-r4-lr-5e-5",
+  "config_digest": "39cfd6b28fdad6643310939610d54745b24431a23cd70e56b4ccac078a762e16",
+  "data": {
+    "repository": "financial_phrasebank",
+    "revision": "8d3fe0c36d5feec6b3cc5e455b0fcb4820fb9964",
+    "subset": "75Agree",
+    "train_rows": 2417,
+    "validation_rows": 518
+  },
+  "effective_config": {
+    "data": {
+      "dataset_revision": "8d3fe0c36d5feec6b3cc5e455b0fcb4820fb9964",
+      "max_length": 64,
+      "split_seed": 17,
+      "subset": "75Agree"
+    },
+    "evaluation": {
+      "bootstrap_samples": 1000,
+      "seed": 17
+    },
+    "experiment": {
+      "kind": "sentiment",
+      "name": "financial-phrasebank-lora"
+    },
+    "generation": {},
+    "model": {
+      "base_model": "openai-community/gpt2",
+      "lora_alpha": 8.0,
+      "lora_dropout": 0.0,
+      "lora_rank": 4,
+      "mode": "lora",
+      "model_revision": "607a30d783dfa663caf39e06633721c8d4cfcd7e",
+      "num_labels": 3,
+      "target_modules": [
+        "attention.c_attn",
+        "attention.c_proj"
+      ]
+    },
+    "optimization": {
+      "amp": true,
+      "batch_size": 1,
+      "epochs": 3,
+      "gradient_accumulation_steps": 16,
+      "learning_rate": 5e-05,
+      "max_grad_norm": 1.0,
+      "weight_decay": 0.01
+    },
+    "output": {
+      "directory": "../../artifacts/sentiment/lora",
+      "result": "../../reports/results/financial-phrasebank-lora-seed-17.json"
+    }
+  },
+  "kind": "sentiment-candidate",
+  "method": "lora",
+  "schema_version": 1,
+  "status": "completed",
+  "timing": {
+    "train_seconds": 876.3977232000034
+  },
+  "validation": {
+    "accuracy": 0.8243243243243243,
+    "brier_score": 0.24977608918238559,
+    "confusion_matrix": [
+      [
+        38,
+        11,
+        14
+      ],
+      [
+        1,
+        312,
+        9
+      ],
+      [
+        10,
+        46,
+        77
+      ]
+    ],
+    "expected_calibration_error": 0.027290326517981425,
+    "loss": 0.4271714177027816,
+    "macro_f1": 0.7475182361286968,
+    "macro_f1_bootstrap_ci": {
+      "lower": 0.7025917097478993,
+      "upper": 0.7833762302623445
+    },
+    "per_class": {
+      "0": {
+        "f1": 0.6785714285714286,
+        "precision": 0.7755102040816326,
+        "recall": 0.6031746031746031,
+        "support": 63
+      },
+      "1": {
+        "f1": 0.9030390738060782,
+        "precision": 0.8455284552845529,
+        "recall": 0.968944099378882,
+        "support": 322
+      },
+      "2": {
+        "f1": 0.6609442060085837,
+        "precision": 0.77,
+        "recall": 0.5789473684210527,
+        "support": 133
+      }
+    },
+    "probabilities_recorded": true
+  },
+  "validation_candidates": [
+    {
+      "epoch": 1,
+      "metrics": {
+        "accuracy": 0.6254826254826255,
+        "brier_score": 0.4918651424131491,
+        "confusion_matrix": [
+          [
+            0,
+            55,
+            8
+          ],
+          [
+            2,
+            309,
+            11
+          ],
+          [
+            0,
+            118,
+            15
+          ]
+        ],
+        "expected_calibration_error": 0.0620099380324706,
+        "macro_f1": 0.31609914499359487,
+        "macro_f1_bootstrap_ci": {
+          "lower": 0.28399334084084144,
+          "upper": 0.36081935469894943
+        },
+        "per_class": {
+          "0": {
+            "f1": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "support": 63
+          },
+          "1": {
+            "f1": 0.7686567164179104,
+            "precision": 0.6410788381742739,
+            "recall": 0.9596273291925466,
+            "support": 322
+          },
+          "2": {
+            "f1": 0.17964071856287425,
+            "precision": 0.4411764705882353,
+            "recall": 0.11278195488721804,
+            "support": 133
+          }
+        },
+        "probabilities_recorded": true
+      }
+    },
+    {
+      "epoch": 2,
+      "metrics": {
+        "accuracy": 0.7277992277992278,
+        "brier_score": 0.37843532597787527,
+        "confusion_matrix": [
+          [
+            25,
+            18,
+            20
+          ],
+          [
+            1,
+            303,
+            18
+          ],
+          [
+            18,
+            66,
+            49
+          ]
+        ],
+        "expected_calibration_error": 0.042495300238196934,
+        "macro_f1": 0.5891564099399277,
+        "macro_f1_bootstrap_ci": {
+          "lower": 0.5426539961492824,
+          "upper": 0.6353935075179357
+        },
+        "per_class": {
+          "0": {
+            "f1": 0.4672897196261682,
+            "precision": 0.5681818181818182,
+            "recall": 0.3968253968253968,
+            "support": 63
+          },
+          "1": {
+            "f1": 0.8547249647390691,
+            "precision": 0.7829457364341085,
+            "recall": 0.9409937888198758,
+            "support": 322
+          },
+          "2": {
+            "f1": 0.44545454545454544,
+            "precision": 0.5632183908045977,
+            "recall": 0.3684210526315789,
+            "support": 133
+          }
+        },
+        "probabilities_recorded": true
+      }
+    },
+    {
+      "epoch": 3,
+      "metrics": {
+        "accuracy": 0.8243243243243243,
+        "brier_score": 0.24977608918238559,
+        "confusion_matrix": [
+          [
+            38,
+            11,
+            14
+          ],
+          [
+            1,
+            312,
+            9
+          ],
+          [
+            10,
+            46,
+            77
+          ]
+        ],
+        "expected_calibration_error": 0.027290326517981425,
+        "loss": 0.4271714177027816,
+        "macro_f1": 0.7475182361286968,
+        "macro_f1_bootstrap_ci": {
+          "lower": 0.7025917097478993,
+          "upper": 0.7833762302623445
+        },
+        "per_class": {
+          "0": {
+            "f1": 0.6785714285714286,
+            "precision": 0.7755102040816326,
+            "recall": 0.6031746031746031,
+            "support": 63
+          },
+          "1": {
+            "f1": 0.9030390738060782,
+            "precision": 0.8455284552845529,
+            "recall": 0.968944099378882,
+            "support": 322
+          },
+          "2": {
+            "f1": 0.6609442060085837,
+            "precision": 0.77,
+            "recall": 0.5789473684210527,
+            "support": 133
+          }
+        },
+        "probabilities_recorded": true
+      }
+    }
+  ]
+}

@@ -37,13 +37,22 @@ def _load_comparison(results_dir: Path) -> dict[str, Any]:
         slug = method_slugs.get(str(method))
         if slug is None:
             continue
-        records = (
+        historical_records = (
             [results_dir / "financial-phrasebank-tfidf.json"]
             if slug == "tfidf"
             else [
                 results_dir / f"financial-phrasebank-{slug}-seed-{seed}.json"
                 for seed in summary["seeds"]
             ]
+        )
+        v3_slug = "baseline" if slug == "tfidf" else slug.replace("-", "_")
+        v3_records = (
+            [results_dir / "runs" / "baseline.json"]
+            if slug == "tfidf"
+            else [results_dir / "runs" / f"{v3_slug}-seed-{seed}.json" for seed in summary["seeds"]]
+        )
+        records = (
+            historical_records if any(path.exists() for path in historical_records) else v3_records
         )
         memory_values: list[int] = []
         for record_path in records:
@@ -81,7 +90,10 @@ def _svg_document(title: str, body: str, *, width: int = 760, height: int = 460)
 def _scatter_figure(results_dir: Path) -> str:
     colours = {"full": "#b23a48", "lora": "#247ba0", "head_only": "#f18f01", "baseline": "#2a9d8f"}
     points: list[tuple[str, int, float]] = []
-    for path in sorted(results_dir.glob("financial-phrasebank-*.json")):
+    paths = sorted(results_dir.glob("financial-phrasebank-*.json"))
+    if not paths:
+        paths = sorted((results_dir / "runs").glob("*.json"))
+    for path in paths:
         payload = json.loads(path.read_text(encoding="utf-8"))
         metrics = payload.get("metrics", {}).get("test", {})
         parameters = payload.get("parameters", {})
@@ -126,6 +138,8 @@ def _scatter_figure(results_dir: Path) -> str:
 def _scratch_figure(results_dir: Path) -> str:
     path = results_dir / "tiny-shakespeare-transformer-scratch.json"
     if not path.exists():
+        path = results_dir.parent / "tiny-shakespeare-transformer-scratch.json"
+    if not path.exists():
         raise ValueError(f"scratch transformer result is missing: {path}")
     payload = json.loads(path.read_text(encoding="utf-8"))
     training = payload.get("metrics", {}).get("training_loss")
@@ -166,6 +180,9 @@ def _calibration_figure(results_dir: Path) -> str:
     """Render pre/post-temperature reliability from a verified local checkpoint."""
     record_path = results_dir / "financial-phrasebank-lora-seed-17.json"
     artifact_root = ROOT / "artifacts" / "sentiment" / "lora-seed-17"
+    if not record_path.exists():
+        record_path = results_dir / "runs" / "lora-seed-17.json"
+        artifact_root = results_dir / "runs" / "lora-seed-17"
     if not record_path.exists():
         raise ValueError("LoRA seed-17 result is required for calibration figure")
     from transformer_lab.experiments.manifests import verify_run

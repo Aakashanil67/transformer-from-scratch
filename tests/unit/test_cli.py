@@ -74,6 +74,26 @@ def test_selection_and_frozen_evaluation_commands_require_their_manifests() -> N
     assert evaluation.seeds == [17, 23, 41]
 
 
+def test_candidate_training_command_requires_validation_summary_path() -> None:
+    args = build_parser().parse_args(
+        [
+            "train-sentiment-candidate",
+            "--config",
+            "candidate.toml",
+            "--summary",
+            "summary.json",
+            "--device",
+            "cuda",
+            "--seed",
+            "17",
+        ]
+    )
+
+    assert args.command == "train-sentiment-candidate"
+    assert args.summary == "summary.json"
+    assert args.seed == 17
+
+
 @pytest.mark.parametrize(
     "command",
     ["sample", "verify-gpt2", "train-sentiment", "evaluate-sentiment"],

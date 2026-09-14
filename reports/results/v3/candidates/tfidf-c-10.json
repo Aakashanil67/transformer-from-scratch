@@ -1,0 +1,156 @@
+{
+  "artifacts": {
+    "model": {
+      "path": "model.joblib",
+      "sha256": "37fa2267e9c0e3fba27bc24f9a861127c0d2d7aca04cce2db5ecc677ebe97c20"
+    }
+  },
+  "candidate_id": "tfidf-c-10",
+  "config_digest": "4769255216a8cb4e2335a25866d2271fe65c2f5053a37718d79519c4fdc9e0fa",
+  "data": {
+    "repository": "financial_phrasebank",
+    "revision": "8d3fe0c36d5feec6b3cc5e455b0fcb4820fb9964",
+    "subset": "75Agree",
+    "train_rows": 2417,
+    "validation_rows": 518
+  },
+  "effective_config": {
+    "data": {
+      "dataset_revision": "8d3fe0c36d5feec6b3cc5e455b0fcb4820fb9964",
+      "split_seed": 17,
+      "subset": "75Agree"
+    },
+    "evaluation": {
+      "bootstrap_samples": 1000,
+      "seed": 17
+    },
+    "experiment": {
+      "kind": "sentiment",
+      "name": "financial-phrasebank-tfidf"
+    },
+    "generation": {},
+    "model": {
+      "mode": "baseline",
+      "model_type": "tfidf-logistic"
+    },
+    "optimization": {
+      "c": 10.0,
+      "epochs": 1
+    },
+    "output": {
+      "directory": "../../artifacts/sentiment/tfidf",
+      "result": "../../reports/results/financial-phrasebank-tfidf.json"
+    }
+  },
+  "kind": "sentiment-candidate",
+  "method": "baseline",
+  "schema_version": 1,
+  "status": "completed",
+  "timing": {
+    "examples_per_second": 3642.2829111766996,
+    "train_seconds": 0.6635948000039207
+  },
+  "validation": {
+    "accuracy": 0.862934362934363,
+    "brier_score": 0.2130205520802793,
+    "confusion_matrix": [
+      [
+        45,
+        9,
+        9
+      ],
+      [
+        4,
+        306,
+        12
+      ],
+      [
+        6,
+        31,
+        96
+      ]
+    ],
+    "expected_calibration_error": 0.04894987634874139,
+    "loss": 0.3899060677600296,
+    "macro_f1": 0.8156265096924794,
+    "macro_f1_bootstrap_ci": {
+      "lower": 0.7720393322535134,
+      "upper": 0.8559704402695575
+    },
+    "per_class": {
+      "negative": {
+        "f1": 0.7627118644067796,
+        "precision": 0.8181818181818182,
+        "recall": 0.7142857142857143,
+        "support": 63
+      },
+      "neutral": {
+        "f1": 0.9161676646706587,
+        "precision": 0.884393063583815,
+        "recall": 0.9503105590062112,
+        "support": 322
+      },
+      "positive": {
+        "f1": 0.768,
+        "precision": 0.8205128205128205,
+        "recall": 0.7218045112781954,
+        "support": 133
+      }
+    },
+    "probabilities_recorded": true
+  },
+  "validation_candidates": [
+    {
+      "epoch": 1,
+      "metrics": {
+        "accuracy": 0.862934362934363,
+        "brier_score": 0.2130205520802793,
+        "confusion_matrix": [
+          [
+            45,
+            9,
+            9
+          ],
+          [
+            4,
+            306,
+            12
+          ],
+          [
+            6,
+            31,
+            96
+          ]
+        ],
+        "expected_calibration_error": 0.04894987634874139,
+        "loss": 0.3899060677600296,
+        "macro_f1": 0.8156265096924794,
+        "macro_f1_bootstrap_ci": {
+          "lower": 0.7720393322535134,
+          "upper": 0.8559704402695575
+        },
+        "per_class": {
+          "negative": {
+            "f1": 0.7627118644067796,
+            "precision": 0.8181818181818182,
+            "recall": 0.7142857142857143,
+            "support": 63
+          },
+          "neutral": {
+            "f1": 0.9161676646706587,
+            "precision": 0.884393063583815,
+            "recall": 0.9503105590062112,
+            "support": 322
+          },
+          "positive": {
+            "f1": 0.768,
+            "precision": 0.8205128205128205,
+            "recall": 0.7218045112781954,
+            "support": 133
+          }
+        },
+        "probabilities_recorded": true
+      }
+    }
+  ]
+}

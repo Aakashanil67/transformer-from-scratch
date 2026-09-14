@@ -220,3 +220,31 @@ def classification_metrics(
                 )
         result["expected_calibration_error"] = ece
     return result
+
+
+def multiclass_log_loss(
+    targets: np.ndarray,
+    probabilities: np.ndarray,
+    *,
+    labels: Sequence[int | str],
+) -> float:
+    """Return mean multiclass negative log-likelihood for aligned probabilities."""
+    if targets.ndim != 1:
+        raise ValueError("targets must be one-dimensional")
+    probability_array = np.asarray(probabilities, dtype=float)
+    label_list = list(labels)
+    if probability_array.shape != (len(targets), len(label_list)):
+        raise ValueError("probabilities must align with targets and labels")
+    if not np.all(np.isfinite(probability_array)):
+        raise ValueError("probabilities must be finite")
+    if np.any(probability_array < 0) or np.any(probability_array > 1):
+        raise ValueError("probabilities must be bounded between zero and one")
+    if not np.allclose(probability_array.sum(axis=1), 1.0, rtol=0, atol=1e-6):
+        raise ValueError("probability rows must sum to one")
+    label_index = {label: index for index, label in enumerate(label_list)}
+    try:
+        target_indices = np.asarray([label_index[target] for target in targets], dtype=np.int64)
+    except KeyError as error:
+        raise ValueError("targets contain an unknown class label") from error
+    rows = np.arange(len(target_indices))
+    return float(-np.log(np.clip(probability_array[rows, target_indices], 1e-12, 1.0)).mean())

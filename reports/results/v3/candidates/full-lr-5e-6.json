@@ -1,0 +1,265 @@
+{
+  "artifacts": {
+    "model": {
+      "path": "model.pt",
+      "sha256": "40f73db056267cb161bafcc5bfb822b66c2ec046943f0ea7fd0d501722ef7882"
+    }
+  },
+  "candidate_id": "full-lr-5e-6",
+  "config_digest": "962cd664d3d75f65815999c4b53d1a95c58c41ef2014723d188030b3c51de9b4",
+  "data": {
+    "repository": "financial_phrasebank",
+    "revision": "8d3fe0c36d5feec6b3cc5e455b0fcb4820fb9964",
+    "subset": "75Agree",
+    "train_rows": 2417,
+    "validation_rows": 518
+  },
+  "effective_config": {
+    "data": {
+      "dataset_revision": "8d3fe0c36d5feec6b3cc5e455b0fcb4820fb9964",
+      "max_length": 64,
+      "split_seed": 17,
+      "subset": "75Agree"
+    },
+    "evaluation": {
+      "bootstrap_samples": 1000,
+      "seed": 17
+    },
+    "experiment": {
+      "kind": "sentiment",
+      "name": "financial-phrasebank-full"
+    },
+    "generation": {},
+    "model": {
+      "base_model": "openai-community/gpt2",
+      "mode": "full",
+      "model_revision": "607a30d783dfa663caf39e06633721c8d4cfcd7e",
+      "num_labels": 3
+    },
+    "optimization": {
+      "amp": true,
+      "batch_size": 1,
+      "epochs": 3,
+      "gradient_accumulation_steps": 16,
+      "learning_rate": 5e-06,
+      "max_grad_norm": 1.0,
+      "weight_decay": 0.01
+    },
+    "output": {
+      "directory": "../../artifacts/sentiment/full",
+      "result": "../../reports/results/financial-phrasebank-full-seed-17.json"
+    }
+  },
+  "kind": "sentiment-candidate",
+  "method": "full",
+  "schema_version": 1,
+  "status": "completed",
+  "timing": {
+    "train_seconds": 1080.5543630999891
+  },
+  "validation": {
+    "accuracy": 0.8745173745173745,
+    "brier_score": 0.1879859257145359,
+    "confusion_matrix": [
+      [
+        53,
+        6,
+        4
+      ],
+      [
+        3,
+        307,
+        12
+      ],
+      [
+        10,
+        30,
+        93
+      ]
+    ],
+    "expected_calibration_error": 0.06675064995252028,
+    "loss": 0.4072564798067916,
+    "macro_f1": 0.837869579451865,
+    "macro_f1_bootstrap_ci": {
+      "lower": 0.8034274101114847,
+      "upper": 0.8694582274708732
+    },
+    "per_class": {
+      "0": {
+        "f1": 0.8217054263565892,
+        "precision": 0.803030303030303,
+        "recall": 0.8412698412698413,
+        "support": 63
+      },
+      "1": {
+        "f1": 0.9233082706766917,
+        "precision": 0.8950437317784257,
+        "recall": 0.953416149068323,
+        "support": 322
+      },
+      "2": {
+        "f1": 0.768595041322314,
+        "precision": 0.8532110091743119,
+        "recall": 0.6992481203007519,
+        "support": 133
+      }
+    },
+    "probabilities_recorded": true
+  },
+  "validation_candidates": [
+    {
+      "epoch": 1,
+      "metrics": {
+        "accuracy": 0.747104247104247,
+        "brier_score": 0.36424596935466697,
+        "confusion_matrix": [
+          [
+            6,
+            14,
+            43
+          ],
+          [
+            2,
+            309,
+            11
+          ],
+          [
+            2,
+            59,
+            72
+          ]
+        ],
+        "expected_calibration_error": 0.08399918468302287,
+        "macro_f1": 0.5327363422397668,
+        "macro_f1_bootstrap_ci": {
+          "lower": 0.48974909864530597,
+          "upper": 0.5858563102545907
+        },
+        "per_class": {
+          "0": {
+            "f1": 0.1643835616438356,
+            "precision": 0.6,
+            "recall": 0.09523809523809523,
+            "support": 63
+          },
+          "1": {
+            "f1": 0.8778409090909091,
+            "precision": 0.8089005235602095,
+            "recall": 0.9596273291925466,
+            "support": 322
+          },
+          "2": {
+            "f1": 0.555984555984556,
+            "precision": 0.5714285714285714,
+            "recall": 0.5413533834586466,
+            "support": 133
+          }
+        },
+        "probabilities_recorded": true
+      }
+    },
+    {
+      "epoch": 2,
+      "metrics": {
+        "accuracy": 0.8571428571428571,
+        "brier_score": 0.2041622630231578,
+        "confusion_matrix": [
+          [
+            47,
+            6,
+            10
+          ],
+          [
+            4,
+            295,
+            23
+          ],
+          [
+            10,
+            21,
+            102
+          ]
+        ],
+        "expected_calibration_error": 0.03843209348820354,
+        "macro_f1": 0.81180253810092,
+        "macro_f1_bootstrap_ci": {
+          "lower": 0.7701716439748109,
+          "upper": 0.8446388845690097
+        },
+        "per_class": {
+          "0": {
+            "f1": 0.7580645161290323,
+            "precision": 0.7704918032786885,
+            "recall": 0.746031746031746,
+            "support": 63
+          },
+          "1": {
+            "f1": 0.9161490683229814,
+            "precision": 0.9161490683229814,
+            "recall": 0.9161490683229814,
+            "support": 322
+          },
+          "2": {
+            "f1": 0.7611940298507462,
+            "precision": 0.7555555555555555,
+            "recall": 0.7669172932330827,
+            "support": 133
+          }
+        },
+        "probabilities_recorded": true
+      }
+    },
+    {
+      "epoch": 3,
+      "metrics": {
+        "accuracy": 0.8745173745173745,
+        "brier_score": 0.1879859257145359,
+        "confusion_matrix": [
+          [
+            53,
+            6,
+            4
+          ],
+          [
+            3,
+            307,
+            12
+          ],
+          [
+            10,
+            30,
+            93
+          ]
+        ],
+        "expected_calibration_error": 0.06675064995252028,
+        "loss": 0.4072564798067916,
+        "macro_f1": 0.837869579451865,
+        "macro_f1_bootstrap_ci": {
+          "lower": 0.8034274101114847,
+          "upper": 0.8694582274708732
+        },
+        "per_class": {
+          "0": {
+            "f1": 0.8217054263565892,
+            "precision": 0.803030303030303,
+            "recall": 0.8412698412698413,
+            "support": 63
+          },
+          "1": {
+            "f1": 0.9233082706766917,
+            "precision": 0.8950437317784257,
+            "recall": 0.953416149068323,
+            "support": 322
+          },
+          "2": {
+            "f1": 0.768595041322314,
+            "precision": 0.8532110091743119,
+            "recall": 0.6992481203007519,
+            "support": 133
+          }
+        },
+        "probabilities_recorded": true
+      }
+    }
+  ]
+}

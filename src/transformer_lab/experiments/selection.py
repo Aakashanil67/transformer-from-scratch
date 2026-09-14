@@ -166,7 +166,9 @@ def load_selection_manifest(path: Path) -> dict[str, Any]:
     return payload
 
 
-def load_selection_protocol(path: Path) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+def load_selection_protocol(
+    path: Path, *, allow_missing_summaries: bool = False
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Load a TOML protocol and candidate validation summaries.
 
     Candidate summaries are intentionally separate from final result records.  A
@@ -201,12 +203,20 @@ def load_selection_protocol(path: Path) -> tuple[dict[str, Any], list[dict[str, 
                 summary_file = (path.parent / summary_file).resolve()
             try:
                 summary = json.loads(summary_file.read_text(encoding="utf-8"))
+            except FileNotFoundError as error:
+                if not allow_missing_summaries:
+                    raise ValueError(f"invalid candidate summary: {summary_file}") from error
+                item["summary_path"] = str(summary_file)
+                item.setdefault("status", "pending")
+                prepared.append(item)
+                continue
             except (OSError, json.JSONDecodeError) as error:
                 raise ValueError(f"invalid candidate summary: {summary_file}") from error
             _reject_test_fields(summary, path=f"candidate[{item.get('candidate_id')}].summary")
             if not isinstance(summary, dict):
                 raise ValueError("candidate summary must be an object")
             item.update(summary)
+            item["summary_path"] = str(summary_file)
         if "validation" not in item:
             item["validation"] = {
                 "macro_f1": item.pop("validation_macro_f1", None),

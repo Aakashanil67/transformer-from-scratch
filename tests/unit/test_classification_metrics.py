@@ -5,6 +5,7 @@ from transformer_lab.evaluation.classification import (
     apply_temperature,
     classification_metrics,
     fit_temperature,
+    multiclass_log_loss,
     paired_bootstrap_difference,
     summarise_seed_metrics,
 )
@@ -36,6 +37,25 @@ def test_probability_metrics_report_brier_score_and_calibration_error() -> None:
 
     assert metrics["brier_score"] == pytest.approx(0.11333333333333336)
     assert metrics["expected_calibration_error"] == pytest.approx(0.2666666666666667)
+
+
+def test_multiclass_log_loss_is_computed_from_aligned_probabilities() -> None:
+    loss = multiclass_log_loss(
+        np.array(["negative", "positive"]),
+        np.array([[0.8, 0.2], [0.25, 0.75]]),
+        labels=["negative", "positive"],
+    )
+
+    assert loss == pytest.approx(float(-np.log([0.8, 0.75]).mean()))
+
+
+def test_multiclass_log_loss_rejects_misaligned_inputs() -> None:
+    with pytest.raises(ValueError, match="one-dimensional"):
+        multiclass_log_loss(np.array([[0]]), np.array([[1.0, 0.0]]), labels=[0, 1])
+    with pytest.raises(ValueError, match="align"):
+        multiclass_log_loss(np.array([0]), np.array([[1.0]]), labels=[0, 1])
+    with pytest.raises(ValueError, match="finite"):
+        multiclass_log_loss(np.array([0]), np.array([[np.nan, 0.0]]), labels=[0, 1])
 
 
 def test_probability_metrics_reject_non_finite_or_wrong_class_probabilities() -> None:

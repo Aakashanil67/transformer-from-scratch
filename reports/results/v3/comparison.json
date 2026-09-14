@@ -1,0 +1,384 @@
+{
+  "artifacts": {},
+  "config": {},
+  "data": {
+    "split_fingerprint": "f9431e8d61a365a385c865796967754eb4da00e8e05cc3bd94a1c03f53727cf2"
+  },
+  "environment": {},
+  "error": null,
+  "manifest": {},
+  "memory": {},
+  "metrics": {
+    "methods": {
+      "full": {
+        "accuracy": {
+          "maximum": 0.9285714285714286,
+          "mean": 0.9144144144144143,
+          "minimum": 0.9073359073359073,
+          "standard_deviation": 0.012260333901710238
+        },
+        "macro_f1": {
+          "maximum": 0.913971956236025,
+          "mean": 0.8883673902870833,
+          "minimum": 0.8750351455665465,
+          "standard_deviation": 0.022180536682586592
+        },
+        "seeds": [
+          17,
+          23,
+          41
+        ]
+      },
+      "head_only": {
+        "accuracy": {
+          "maximum": 0.8262548262548263,
+          "mean": 0.7972972972972974,
+          "minimum": 0.7567567567567568,
+          "standard_deviation": 0.03616794207566639
+        },
+        "macro_f1": {
+          "maximum": 0.7548284373595315,
+          "mean": 0.7256377776729112,
+          "minimum": 0.6874136609632929,
+          "standard_deviation": 0.034603331176036714
+        },
+        "seeds": [
+          17,
+          23,
+          41
+        ]
+      },
+      "lora": {
+        "accuracy": {
+          "maximum": 0.9266409266409267,
+          "mean": 0.9234234234234234,
+          "minimum": 0.918918918918919,
+          "standard_deviation": 0.004018660230629592
+        },
+        "macro_f1": {
+          "maximum": 0.898582061417495,
+          "mean": 0.895842287358017,
+          "minimum": 0.8933197947362949,
+          "standard_deviation": 0.0026378534973368287
+        },
+        "seeds": [
+          17,
+          23,
+          41
+        ]
+      },
+      "tfidf": {
+        "accuracy": {
+          "mean": 0.8687258687258688,
+          "standard_deviation": null
+        },
+        "macro_f1": {
+          "mean": 0.8154566563294043,
+          "standard_deviation": null
+        },
+        "seeds": [
+          17
+        ]
+      }
+    },
+    "paired_comparisons": {
+      "full_minus_head_only": [
+        {
+          "bootstrap_ci": {
+            "lower": 0.11396135545520869,
+            "upper": 0.20566947438548877
+          },
+          "challenger_seed": 17,
+          "group_count": 517,
+          "losses": 0,
+          "macro_f1_difference": 0.15914351887649358,
+          "reference_seed": 17,
+          "resampling_unit": "duplicate_group",
+          "samples": 2000,
+          "ties": 0,
+          "wins": 2000
+        },
+        {
+          "bootstrap_ci": {
+            "lower": 0.13432685346319476,
+            "upper": 0.24317212252562206
+          },
+          "challenger_seed": 23,
+          "group_count": 517,
+          "losses": 0,
+          "macro_f1_difference": 0.1886814080953857,
+          "reference_seed": 23,
+          "resampling_unit": "duplicate_group",
+          "samples": 2000,
+          "ties": 0,
+          "wins": 2000
+        },
+        {
+          "bootstrap_ci": {
+            "lower": 0.08814115933030592,
+            "upper": 0.19078630958840706
+          },
+          "challenger_seed": 41,
+          "group_count": 517,
+          "losses": 0,
+          "macro_f1_difference": 0.1403639108706375,
+          "reference_seed": 41,
+          "resampling_unit": "duplicate_group",
+          "samples": 2000,
+          "ties": 0,
+          "wins": 2000
+        }
+      ],
+      "full_minus_lora": [
+        {
+          "bootstrap_ci": {
+            "lower": -0.009797097426575493,
+            "upper": 0.05020575468710543
+          },
+          "challenger_seed": 17,
+          "group_count": 517,
+          "losses": 253,
+          "macro_f1_difference": 0.018346950315763833,
+          "reference_seed": 17,
+          "resampling_unit": "duplicate_group",
+          "samples": 2000,
+          "ties": 0,
+          "wins": 1747
+        },
+        {
+          "bootstrap_ci": {
+            "lower": -0.05643620409969216,
+            "upper": 0.012073740194823308
+          },
+          "challenger_seed": 23,
+          "group_count": 517,
+          "losses": 1816,
+          "macro_f1_difference": -0.02248699235881635,
+          "reference_seed": 23,
+          "resampling_unit": "duplicate_group",
+          "samples": 2000,
+          "ties": 0,
+          "wins": 184
+        },
+        {
+          "bootstrap_ci": {
+            "lower": -0.05597067474172543,
+            "upper": 0.020582409616612198
+          },
+          "challenger_seed": 41,
+          "group_count": 517,
+          "losses": 1676,
+          "macro_f1_difference": -0.018284649169748368,
+          "reference_seed": 41,
+          "resampling_unit": "duplicate_group",
+          "samples": 2000,
+          "ties": 0,
+          "wins": 324
+        }
+      ],
+      "full_minus_tfidf": [
+        {
+          "bootstrap_ci": {
+            "lower": 0.0486033576637099,
+            "upper": 0.14493732011635957
+          },
+          "challenger_seed": 17,
+          "group_count": 517,
+          "losses": 0,
+          "macro_f1_difference": 0.09851529990662067,
+          "reference_seed": 17,
+          "resampling_unit": "duplicate_group",
+          "samples": 2000,
+          "ties": 0,
+          "wins": 2000
+        },
+        {
+          "bootstrap_ci": {
+            "lower": 0.01312500204996872,
+            "upper": 0.10889967776319602
+          },
+          "challenger_seed": 23,
+          "group_count": 517,
+          "losses": 15,
+          "macro_f1_difference": 0.06063841272927428,
+          "reference_seed": 17,
+          "resampling_unit": "duplicate_group",
+          "samples": 2000,
+          "ties": 0,
+          "wins": 1985
+        },
+        {
+          "bootstrap_ci": {
+            "lower": 0.013601747608699064,
+            "upper": 0.10747014711357972
+          },
+          "challenger_seed": 41,
+          "group_count": 517,
+          "losses": 12,
+          "macro_f1_difference": 0.05957848923714215,
+          "reference_seed": 17,
+          "resampling_unit": "duplicate_group",
+          "samples": 2000,
+          "ties": 0,
+          "wins": 1988
+        }
+      ],
+      "head_only_minus_tfidf": [
+        {
+          "bootstrap_ci": {
+            "lower": -0.12329466757038654,
+            "upper": -0.001502956445747002
+          },
+          "challenger_seed": 17,
+          "group_count": 517,
+          "losses": 1954,
+          "macro_f1_difference": -0.060628218969872916,
+          "reference_seed": 17,
+          "resampling_unit": "duplicate_group",
+          "samples": 2000,
+          "ties": 0,
+          "wins": 46
+        },
+        {
+          "bootstrap_ci": {
+            "lower": -0.18860840386641778,
+            "upper": -0.06595188204439806
+          },
+          "challenger_seed": 23,
+          "group_count": 517,
+          "losses": 1999,
+          "macro_f1_difference": -0.1280429953661114,
+          "reference_seed": 17,
+          "resampling_unit": "duplicate_group",
+          "samples": 2000,
+          "ties": 0,
+          "wins": 1
+        },
+        {
+          "bootstrap_ci": {
+            "lower": -0.14114476897867062,
+            "upper": -0.019173631160633663
+          },
+          "challenger_seed": 41,
+          "group_count": 517,
+          "losses": 1989,
+          "macro_f1_difference": -0.08078542163349534,
+          "reference_seed": 17,
+          "resampling_unit": "duplicate_group",
+          "samples": 2000,
+          "ties": 0,
+          "wins": 11
+        }
+      ],
+      "lora_minus_head_only": [
+        {
+          "bootstrap_ci": {
+            "lower": 0.0906587969038802,
+            "upper": 0.19033348547599896
+          },
+          "challenger_seed": 17,
+          "group_count": 517,
+          "losses": 0,
+          "macro_f1_difference": 0.14079656856072975,
+          "reference_seed": 17,
+          "resampling_unit": "duplicate_group",
+          "samples": 2000,
+          "ties": 0,
+          "wins": 2000
+        },
+        {
+          "bootstrap_ci": {
+            "lower": 0.15935784749635296,
+            "upper": 0.2615381125937134
+          },
+          "challenger_seed": 23,
+          "group_count": 517,
+          "losses": 0,
+          "macro_f1_difference": 0.21116840045420204,
+          "reference_seed": 23,
+          "resampling_unit": "duplicate_group",
+          "samples": 2000,
+          "ties": 0,
+          "wins": 2000
+        },
+        {
+          "bootstrap_ci": {
+            "lower": 0.11375571031561646,
+            "upper": 0.20534724555709227
+          },
+          "challenger_seed": 41,
+          "group_count": 517,
+          "losses": 0,
+          "macro_f1_difference": 0.15864856004038586,
+          "reference_seed": 41,
+          "resampling_unit": "duplicate_group",
+          "samples": 2000,
+          "ties": 0,
+          "wins": 2000
+        }
+      ],
+      "lora_minus_tfidf": [
+        {
+          "bootstrap_ci": {
+            "lower": 0.03398643496476886,
+            "upper": 0.12785722481440778
+          },
+          "challenger_seed": 17,
+          "group_count": 517,
+          "losses": 0,
+          "macro_f1_difference": 0.08016834959085684,
+          "reference_seed": 17,
+          "resampling_unit": "duplicate_group",
+          "samples": 2000,
+          "ties": 0,
+          "wins": 2000
+        },
+        {
+          "bootstrap_ci": {
+            "lower": 0.03257805519151676,
+            "upper": 0.13474864518342308
+          },
+          "challenger_seed": 23,
+          "group_count": 517,
+          "losses": 0,
+          "macro_f1_difference": 0.08312540508809063,
+          "reference_seed": 17,
+          "resampling_unit": "duplicate_group",
+          "samples": 2000,
+          "ties": 0,
+          "wins": 2000
+        },
+        {
+          "bootstrap_ci": {
+            "lower": 0.030791077173474162,
+            "upper": 0.13070339898898406
+          },
+          "challenger_seed": 41,
+          "group_count": 517,
+          "losses": 2,
+          "macro_f1_difference": 0.07786313840689052,
+          "reference_seed": 17,
+          "resampling_unit": "duplicate_group",
+          "samples": 2000,
+          "ties": 0,
+          "wins": 1998
+        }
+      ]
+    }
+  },
+  "model": {},
+  "optimization": {},
+  "parameters": {},
+  "provenance": {
+    "config_sha256": null,
+    "git_commit": "9f79862e35bb89dbdee8e54acc58da57892fb684",
+    "git_dirty": true,
+    "source_tree_sha256": "71ba4cc50ae12baa7292a9141de160c1a07b6ba10a76aa2932eb2ba5f4d1a4c1",
+    "source_tree_status": "available"
+  },
+  "run_id": "financial-phrasebank-comparison",
+  "schema_version": 2,
+  "status": "completed",
+  "timestamp_utc": "2026-09-14T18:17:33.576962Z",
+  "timing": {}
+}

@@ -32,7 +32,11 @@ The [per-seed parameter/accuracy plot](figures/macro-f1-vs-parameters.svg), [cal
 
 ## Validation-selected follow-up status
 
-The v3 candidate protocol is frozen in [`configs/sentiment/v3-protocol.toml`](../configs/sentiment/v3-protocol.toml). Its selector consumes validation-only candidate summaries, rejects test-labelled fields, and records unavailable candidates instead of silently substituting historical runs. The nine candidate summaries and the selected three-seed test matrix are not present in this result set, so the historical fixed-profile table above must not be read as validation-selected evidence. Running `select-sentiment` without those summaries fails closed; no v3 test score is claimed here.
+The v3 candidate protocol is frozen in [`configs/sentiment/v3-protocol.toml`](../configs/sentiment/v3-protocol.toml). The protocol contains 12 entries—three settings for each of head-only, LoRA, full fine-tuning, and TF-IDF; the original plan shorthand called these nine candidates. All 12 completed successfully, and their validation-only summaries are retained in [`reports/results/v3/candidates`](results/v3/candidates). The selector rejects test-labelled fields and ranks validation macro-F1, validation cross-entropy loss, then protocol order.
+
+The frozen validation choices are head-only `head-only-lr-1e-2`, LoRA `lora-r4-lr-1e-3`, full fine-tuning `full-lr-2e-5`, and TF-IDF `tfidf-c-10`, recorded in the [selection manifest](results/v3/selection.json). The final three-seed matrix used seeds 17, 23, and 41 for each transformer choice plus the deterministic seed-17 TF-IDF reference. Its checked aggregate table is [`generated-results-v3.md`](generated-results-v3.md), with the underlying replayable records in [`reports/results/v3`](results/v3) and derived v3 figures in [`figures/v3`](figures/v3).
+
+This is an exploratory validation-selected follow-up, not an independent holdout: the same fixed test partition is evaluated only after selection, and the selection manifest declares `test_access=false`. The aggregate builder replays the saved test predictions, checks exact example alignment and declared artefact hashes, and then recomputes the displayed means and paired bootstrap comparisons. These results should therefore be read as a post-selection follow-up alongside—not as a replacement for—the historical fixed-profile table above.
 
 ## Interpretation
 

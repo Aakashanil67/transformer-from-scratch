@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import random
 from dataclasses import replace
 from pathlib import Path
@@ -241,6 +242,26 @@ def train_sentiment(
     )
 
 
+def train_sentiment_candidate(
+    config_path: Path,
+    *,
+    summary_path: Path,
+    device_name: str = "cuda",
+    seed: int | None = None,
+    resume: bool = False,
+) -> Path:
+    """Train one validation-only sentiment candidate without test evaluation."""
+    from transformer_lab.experiments.sentiment import run_sentiment_candidate
+
+    return run_sentiment_candidate(
+        load_experiment_config(config_path),
+        device=resolve_device(device_name),
+        summary_path=summary_path,
+        seed=seed,
+        resume=resume,
+    )
+
+
 def evaluate_sentiment(config_path: Path, *, device_name: str = "auto") -> Path:
     """Evaluate a completed sentiment run from its local checkpoint."""
     from transformer_lab.experiments.sentiment import evaluate_sentiment_run
@@ -280,6 +301,10 @@ def run_sentiment_matrix(
                     **dict(config.evaluation),
                     **dict(overrides.get("evaluation", {})),
                 },
+                output={
+                    **dict(config.output),
+                    **dict(overrides.get("output", {})),
+                },
             )
         mode = str(config.model.get("mode"))
         if mode == "baseline":
@@ -290,6 +315,16 @@ def run_sentiment_matrix(
                     artifact_root=Path(baseline_config.output["directory"]),
                     expected_config=baseline_config,
                 )
+                result = Path(baseline_config.output["result"])
+                runs.append(
+                    RunOutput(
+                        "tfidf",
+                        int(config.evaluation.get("seed", 17)),
+                        result,
+                        Path(baseline_config.output["directory"]) / "evaluation.joblib",
+                    )
+                )
+                continue
             result = run_baseline(config)
             runs.append(
                 RunOutput(
@@ -334,13 +369,17 @@ def select_sentiment(protocol_path: Path, *, output: Path | None = None) -> Path
     )
 
     protocol, candidates = load_selection_protocol(protocol_path.resolve())
-    for candidate in candidates:
-        config = candidate.get("config")
-        if isinstance(config, str):
-            config_path = Path(config)
-            if not config_path.is_absolute():
-                candidate["config"] = str((protocol_path.resolve().parent / config_path).resolve())
     destination = output or protocol_path.with_name("selection.json")
+    manifest_root = destination.resolve().parent
+    for candidate in candidates:
+        for key in ("config", "summary_path"):
+            value = candidate.get(key)
+            if not isinstance(value, str):
+                continue
+            source_path = Path(value)
+            if not source_path.is_absolute():
+                source_path = (protocol_path.resolve().parent / source_path).resolve()
+            candidate[key] = Path(os.path.relpath(source_path, manifest_root)).as_posix()
     return write_selection_manifest(destination.resolve(), protocol=protocol, candidates=candidates)
 
 
@@ -358,6 +397,7 @@ def evaluate_matrix(
     selection = load_selection_manifest(selection_path.resolve())
     config_paths: list[Path] = []
     config_overrides: dict[str, dict[str, Any]] = {}
+    matrix_root = output.resolve().parent / "runs"
     for method, chosen in selection["selection"].items():
         if chosen.get("status") != "completed":
             raise RuntimeError(f"selection has no completed candidate for method {method}")
@@ -394,7 +434,13 @@ def evaluate_matrix(
         overrides = chosen.get("overrides", {})
         if not isinstance(overrides, dict):
             raise ValueError(f"selection candidate for {method} has invalid overrides")
-        config_overrides[str(config_path)] = overrides
+        config_overrides[str(config_path)] = {
+            **overrides,
+            "output": {
+                "directory": str(matrix_root / method),
+                "result": str(matrix_root / f"{method}.json"),
+            },
+        }
     if not config_paths:
         raise ValueError("selection manifest contains no configurations")
     return run_sentiment_matrix(

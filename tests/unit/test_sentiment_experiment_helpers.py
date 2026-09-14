@@ -15,10 +15,29 @@ from transformer_lab.experiments.sentiment import (
     _predict,
     _train_transformer,
     evaluate_sentiment_run,
+    run_sentiment_candidate,
     run_sentiment_experiment,
     sentiment_seeds,
 )
 from transformer_lab.models.sentiment import SentimentClassifier
+
+
+def test_validation_only_training_does_not_read_the_test_partition() -> None:
+    class SplitSentinel:
+        train = ("train",)
+        validation = ("validation",)
+
+        @property
+        def test(self):
+            raise AssertionError("validation-only candidate accessed the test partition")
+
+    train, validation, test = sentiment_module._training_partitions(
+        SplitSentinel(), validation_only=True
+    )
+
+    assert train == ("train",)
+    assert validation == ("validation",)
+    assert test is None
 
 
 class FakeTokenizer:
@@ -76,6 +95,8 @@ def test_sentiment_helpers_train_and_predict_on_a_tiny_batch() -> None:
     targets, predictions, probabilities, logits = _predict(model, loader, torch.device("cpu"))
 
     assert len(result["losses"]) == 1
+    assert result["validation"]["loss"] > 0
+    assert result["validation_candidates"][0]["metrics"]["loss"] > 0
     assert targets.shape == predictions.shape == (2,)
     assert probabilities.shape == (2, 3)
     assert logits.shape == (2, 3)
@@ -209,6 +230,38 @@ def test_cpu_sentiment_preflight_writes_an_unavailable_record(tmp_path: Path) ->
 
     assert result.exists()
     assert '"status": "unavailable"' in result.read_text(encoding="utf-8")
+
+
+def test_candidate_cpu_preflight_writes_an_unavailable_summary(tmp_path: Path) -> None:
+    config = _config(tmp_path, "candidate-unavailable")
+
+    result = run_sentiment_candidate(
+        config,
+        device=torch.device("cpu"),
+        summary_path=tmp_path / "candidate-summary.json",
+    )
+    payload = json.loads(result.read_text(encoding="utf-8"))
+
+    assert payload["status"] == "unavailable"
+    assert payload["candidate_id"] == "candidate-unavailable"
+
+
+def test_candidate_cuda_oom_writes_a_failed_summary(monkeypatch, tmp_path: Path) -> None:
+    config = _config(tmp_path, "candidate-oom")
+
+    def fail(*args, **kwargs):
+        raise torch.OutOfMemoryError("CUDA out of memory while allocating 1 GiB")
+
+    monkeypatch.setattr(sentiment_module, "_execute_sentiment_experiment", fail)
+    result = run_sentiment_candidate(
+        config,
+        device=torch.device("cuda"),
+        summary_path=tmp_path / "candidate-summary.json",
+    )
+    payload = json.loads(result.read_text(encoding="utf-8"))
+
+    assert payload["status"] == "failed"
+    assert payload["error"]["type"] == "OutOfMemoryError"
 
 
 def test_cuda_oom_writes_a_failed_record(monkeypatch, tmp_path: Path) -> None:

@@ -1,0 +1,525 @@
+{
+  "artifacts": {
+    "evaluation": {
+      "path": "evaluation.pt",
+      "sha256": "93819680bf282309e3d7a4b4eca4ee7721b5bc83aef7e9faec781e7094477f7d"
+    },
+    "model": {
+      "path": "model.pt",
+      "sha256": "6956c8c27b5f15b0cd632c732be2480750cba1e05c934cfa16e53a08dad8ed96"
+    }
+  },
+  "config": {
+    "data": {
+      "dataset_revision": "8d3fe0c36d5feec6b3cc5e455b0fcb4820fb9964",
+      "max_length": 64,
+      "split_seed": 17,
+      "subset": "75Agree"
+    },
+    "evaluation": {
+      "bootstrap_samples": 1000,
+      "seed": 23
+    },
+    "experiment": {
+      "kind": "sentiment",
+      "name": "financial-phrasebank-lora-seed-23"
+    },
+    "generation": {},
+    "model": {
+      "base_model": "openai-community/gpt2",
+      "lora_alpha": 8.0,
+      "lora_dropout": 0.0,
+      "lora_rank": 4,
+      "mode": "lora",
+      "model_revision": "607a30d783dfa663caf39e06633721c8d4cfcd7e",
+      "num_labels": 3,
+      "target_modules": [
+        "attention.c_attn",
+        "attention.c_proj"
+      ]
+    },
+    "optimization": {
+      "amp": true,
+      "batch_size": 1,
+      "epochs": 3,
+      "gradient_accumulation_steps": 16,
+      "learning_rate": 0.001,
+      "max_grad_norm": 1.0,
+      "weight_decay": 0.01
+    },
+    "output": {
+      "directory": "../../reports/results/v3/runs/lora-seed-23",
+      "result": "../../reports/results/v3/runs/lora-seed-23.json"
+    }
+  },
+  "data": {
+    "archive_member": "FinancialPhraseBank-v1.0/Sentences_75Agree.txt",
+    "archive_sha256": "0e1a06c4900fdae46091d031068601e3773ba067c7cecb5b0da1dcba5ce989a6",
+    "class_counts": {
+      "negative": 420,
+      "neutral": 2146,
+      "positive": 887
+    },
+    "examples": 3453,
+    "repository": "financial_phrasebank",
+    "revision": "8d3fe0c36d5feec6b3cc5e455b0fcb4820fb9964",
+    "split": {
+      "sha256": "f9431e8d61a365a385c865796967754eb4da00e8e05cc3bd94a1c03f53727cf2",
+      "test": {
+        "class_counts": {
+          "negative": 63,
+          "neutral": 322,
+          "positive": 133
+        },
+        "rows": 518,
+        "sha256": "1861ba36378752933f12867b540fb4c09edf25557b779771a54fbf92bed0dd57"
+      },
+      "train": {
+        "class_counts": {
+          "negative": 294,
+          "neutral": 1502,
+          "positive": 621
+        },
+        "rows": 2417,
+        "sha256": "b1d026ce7ad1a85feddee7261fd6990541b1067c9411ff69937be657f80f846d"
+      },
+      "validation": {
+        "class_counts": {
+          "negative": 63,
+          "neutral": 322,
+          "positive": 133
+        },
+        "rows": 518,
+        "sha256": "2e9fdd9fde1f1951c610ad69a8894a8662748bc4ad29adffe7a8f44fa0a2d562"
+      }
+    },
+    "unique_sentence_groups": 3448
+  },
+  "environment": {
+    "cuda": "12.8",
+    "cuda_available": true,
+    "device": "cuda",
+    "gpu": "NVIDIA GeForce GTX 1650",
+    "gpu_memory_bytes": 4294639616,
+    "packages": {
+      "joblib": "1.5.3",
+      "numpy": "2.5.2",
+      "scikit-learn": "1.9.0",
+      "torch": "2.9.0+cu128",
+      "transformers": "4.57.6"
+    },
+    "platform": "Windows",
+    "python": "3.12.10",
+    "torch": "2.9.0+cu128"
+  },
+  "error": null,
+  "manifest": {
+    "artifacts": {
+      "evaluation": {
+        "path": "evaluation.pt",
+        "sha256": "93819680bf282309e3d7a4b4eca4ee7721b5bc83aef7e9faec781e7094477f7d"
+      },
+      "model": {
+        "path": "model.pt",
+        "sha256": "6956c8c27b5f15b0cd632c732be2480750cba1e05c934cfa16e53a08dad8ed96"
+      }
+    },
+    "config_sha256": "588be0f91409c6f58d00bce2d7f9080a5e74288b237e5d0cf55f4ebe8125460d",
+    "data": {
+      "ordered_evaluation_rows": 518,
+      "split": {
+        "sha256": "f9431e8d61a365a385c865796967754eb4da00e8e05cc3bd94a1c03f53727cf2",
+        "test": {
+          "class_counts": {
+            "negative": 63,
+            "neutral": 322,
+            "positive": 133
+          },
+          "rows": 518,
+          "sha256": "1861ba36378752933f12867b540fb4c09edf25557b779771a54fbf92bed0dd57"
+        },
+        "train": {
+          "class_counts": {
+            "negative": 294,
+            "neutral": 1502,
+            "positive": 621
+          },
+          "rows": 2417,
+          "sha256": "b1d026ce7ad1a85feddee7261fd6990541b1067c9411ff69937be657f80f846d"
+        },
+        "validation": {
+          "class_counts": {
+            "negative": 63,
+            "neutral": 322,
+            "positive": 133
+          },
+          "rows": 518,
+          "sha256": "2e9fdd9fde1f1951c610ad69a8894a8662748bc4ad29adffe7a8f44fa0a2d562"
+        }
+      }
+    },
+    "effective_config": {
+      "data": {
+        "dataset_revision": "8d3fe0c36d5feec6b3cc5e455b0fcb4820fb9964",
+        "max_length": 64,
+        "split_seed": 17,
+        "subset": "75Agree"
+      },
+      "evaluation": {
+        "bootstrap_samples": 1000,
+        "seed": 23
+      },
+      "experiment": {
+        "kind": "sentiment",
+        "name": "financial-phrasebank-lora-seed-23"
+      },
+      "generation": {},
+      "model": {
+        "base_model": "openai-community/gpt2",
+        "lora_alpha": 8.0,
+        "lora_dropout": 0.0,
+        "lora_rank": 4,
+        "mode": "lora",
+        "model_revision": "607a30d783dfa663caf39e06633721c8d4cfcd7e",
+        "num_labels": 3,
+        "target_modules": [
+          "attention.c_attn",
+          "attention.c_proj"
+        ]
+      },
+      "optimization": {
+        "amp": true,
+        "batch_size": 1,
+        "epochs": 3,
+        "gradient_accumulation_steps": 16,
+        "learning_rate": 0.001,
+        "max_grad_norm": 1.0,
+        "weight_decay": 0.01
+      },
+      "output": {
+        "directory": "../../reports/results/v3/runs/lora-seed-23",
+        "result": "../../reports/results/v3/runs/lora-seed-23.json"
+      }
+    },
+    "evaluation": {
+      "bootstrap_samples": 1000,
+      "seed": 23
+    },
+    "provenance": {
+      "config_sha256": "0b2d52e90625167a9843a2d6752d915a953f9b3a734dc576737b9e6c8dd3a8c2",
+      "git_commit": "9f79862e35bb89dbdee8e54acc58da57892fb684",
+      "git_dirty": true,
+      "source_tree_sha256": "eee9c36b5485db496328fb98b935fe3cfe1ac1cb287b9a73dbbd0e234a645299",
+      "source_tree_status": "available"
+    },
+    "schema_version": 3
+  },
+  "memory": {
+    "peak_cuda_allocated_bytes": 1032679936,
+    "peak_cuda_reserved_bytes": 2789212160
+  },
+  "metrics": {
+    "best_epoch": 2,
+    "calibration": {
+      "after": {
+        "brier_score": 0.11367843349288617,
+        "expected_calibration_error": 0.026876109169925128
+      },
+      "before": {
+        "brier_score": 0.1158646833549511,
+        "expected_calibration_error": 0.039114953180537745
+      },
+      "method": "temperature_scaling",
+      "validation_temperature": 1.6081124435716452
+    },
+    "test": {
+      "accuracy": 0.9266409266409267,
+      "brier_score": 0.11367843349288617,
+      "confusion_matrix": [
+        [
+          53,
+          4,
+          6
+        ],
+        [
+          4,
+          313,
+          5
+        ],
+        [
+          4,
+          15,
+          114
+        ]
+      ],
+      "expected_calibration_error": 0.026876109169925128,
+      "macro_f1": 0.898582061417495,
+      "macro_f1_bootstrap_ci": {
+        "lower": 0.8638531074425735,
+        "upper": 0.9307377908023423
+      },
+      "per_class": {
+        "0": {
+          "f1": 0.8548387096774194,
+          "precision": 0.8688524590163934,
+          "recall": 0.8412698412698413,
+          "support": 63
+        },
+        "1": {
+          "f1": 0.9571865443425076,
+          "precision": 0.9427710843373494,
+          "recall": 0.9720496894409938,
+          "support": 322
+        },
+        "2": {
+          "f1": 0.8837209302325582,
+          "precision": 0.912,
+          "recall": 0.8571428571428571,
+          "support": 133
+        }
+      },
+      "probabilities_recorded": true
+    },
+    "validation": {
+      "accuracy": 0.9305019305019305,
+      "brier_score": 0.10561895483109475,
+      "confusion_matrix": [
+        [
+          56,
+          4,
+          3
+        ],
+        [
+          3,
+          306,
+          13
+        ],
+        [
+          6,
+          7,
+          120
+        ]
+      ],
+      "expected_calibration_error": 0.032135136339195014,
+      "loss": 0.24332899306924755,
+      "macro_f1": 0.9083132624744751,
+      "macro_f1_bootstrap_ci": {
+        "lower": 0.878311282279524,
+        "upper": 0.9312805646856942
+      },
+      "per_class": {
+        "0": {
+          "f1": 0.875,
+          "precision": 0.8615384615384616,
+          "recall": 0.8888888888888888,
+          "support": 63
+        },
+        "1": {
+          "f1": 0.9577464788732394,
+          "precision": 0.9652996845425867,
+          "recall": 0.9503105590062112,
+          "support": 322
+        },
+        "2": {
+          "f1": 0.8921933085501859,
+          "precision": 0.8823529411764706,
+          "recall": 0.9022556390977443,
+          "support": 133
+        }
+      },
+      "probabilities_recorded": true
+    },
+    "validation_candidates": [
+      {
+        "epoch": 1,
+        "metrics": {
+          "accuracy": 0.8841698841698842,
+          "brier_score": 0.18091461645984033,
+          "confusion_matrix": [
+            [
+              56,
+              4,
+              3
+            ],
+            [
+              2,
+              277,
+              43
+            ],
+            [
+              5,
+              3,
+              125
+            ]
+          ],
+          "expected_calibration_error": 0.047419016138006816,
+          "loss": 0.3167285372878385,
+          "macro_f1": 0.8751495763611449,
+          "macro_f1_bootstrap_ci": {
+            "lower": 0.8444534525030055,
+            "upper": 0.90105239348006
+          },
+          "per_class": {
+            "0": {
+              "f1": 0.8888888888888888,
+              "precision": 0.8888888888888888,
+              "recall": 0.8888888888888888,
+              "support": 63
+            },
+            "1": {
+              "f1": 0.9141914191419142,
+              "precision": 0.9753521126760564,
+              "recall": 0.860248447204969,
+              "support": 322
+            },
+            "2": {
+              "f1": 0.8223684210526315,
+              "precision": 0.7309941520467836,
+              "recall": 0.9398496240601504,
+              "support": 133
+            }
+          },
+          "probabilities_recorded": true
+        }
+      },
+      {
+        "epoch": 2,
+        "metrics": {
+          "accuracy": 0.9305019305019305,
+          "brier_score": 0.10561895483109475,
+          "confusion_matrix": [
+            [
+              56,
+              4,
+              3
+            ],
+            [
+              3,
+              306,
+              13
+            ],
+            [
+              6,
+              7,
+              120
+            ]
+          ],
+          "expected_calibration_error": 0.032135136339195014,
+          "loss": 0.24332899306924755,
+          "macro_f1": 0.9083132624744751,
+          "macro_f1_bootstrap_ci": {
+            "lower": 0.878311282279524,
+            "upper": 0.9312805646856942
+          },
+          "per_class": {
+            "0": {
+              "f1": 0.875,
+              "precision": 0.8615384615384616,
+              "recall": 0.8888888888888888,
+              "support": 63
+            },
+            "1": {
+              "f1": 0.9577464788732394,
+              "precision": 0.9652996845425867,
+              "recall": 0.9503105590062112,
+              "support": 322
+            },
+            "2": {
+              "f1": 0.8921933085501859,
+              "precision": 0.8823529411764706,
+              "recall": 0.9022556390977443,
+              "support": 133
+            }
+          },
+          "probabilities_recorded": true
+        }
+      },
+      {
+        "epoch": 3,
+        "metrics": {
+          "accuracy": 0.9015444015444015,
+          "brier_score": 0.13071090980146674,
+          "confusion_matrix": [
+            [
+              54,
+              7,
+              2
+            ],
+            [
+              0,
+              310,
+              12
+            ],
+            [
+              8,
+              22,
+              103
+            ]
+          ],
+          "expected_calibration_error": 0.035585488361741545,
+          "loss": 0.25381444976131357,
+          "macro_f1": 0.8753242561775089,
+          "macro_f1_bootstrap_ci": {
+            "lower": 0.8405279395895321,
+            "upper": 0.9024327338530205
+          },
+          "per_class": {
+            "0": {
+              "f1": 0.864,
+              "precision": 0.8709677419354839,
+              "recall": 0.8571428571428571,
+              "support": 63
+            },
+            "1": {
+              "f1": 0.9379727685325264,
+              "precision": 0.9144542772861357,
+              "recall": 0.9627329192546584,
+              "support": 322
+            },
+            "2": {
+              "f1": 0.824,
+              "precision": 0.8803418803418803,
+              "recall": 0.7744360902255639,
+              "support": 133
+            }
+          },
+          "probabilities_recorded": true
+        }
+      }
+    ]
+  },
+  "model": {
+    "id": "openai-community/gpt2",
+    "mode": "lora",
+    "revision": "607a30d783dfa663caf39e06633721c8d4cfcd7e"
+  },
+  "optimization": {
+    "amp": true,
+    "batch_size": 1,
+    "epochs": 3,
+    "gradient_accumulation_steps": 16,
+    "learning_rate": 0.001,
+    "max_grad_norm": 1.0,
+    "weight_decay": 0.01
+  },
+  "parameters": {
+    "total": 124663299,
+    "trainable": 223491,
+    "trainable_share": 0.001792756984555655
+  },
+  "provenance": {
+    "config_sha256": "0b2d52e90625167a9843a2d6752d915a953f9b3a734dc576737b9e6c8dd3a8c2",
+    "git_commit": "9f79862e35bb89dbdee8e54acc58da57892fb684",
+    "git_dirty": true,
+    "source_tree_sha256": "eee9c36b5485db496328fb98b935fe3cfe1ac1cb287b9a73dbbd0e234a645299",
+    "source_tree_status": "available"
+  },
+  "run_id": "financial-phrasebank-lora-seed-23",
+  "schema_version": 3,
+  "status": "completed",
+  "timestamp_utc": "2026-09-14T12:39:16.256662Z",
+  "timing": {
+    "examples_per_second": 8.380265891778322,
+    "train_seconds": 865.2470093000011
+  }
+}

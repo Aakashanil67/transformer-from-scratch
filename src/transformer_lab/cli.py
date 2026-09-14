@@ -16,6 +16,7 @@ from transformer_lab.commands import (
     select_sentiment,
     train_lm,
     train_sentiment,
+    train_sentiment_candidate,
     verify_gpt2,
 )
 
@@ -24,14 +25,23 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="transformer-lab", description=__doc__)
     parser.add_argument("--version", action="version", version=__version__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for name in ("train-lm", "sample", "verify-gpt2", "train-sentiment", "evaluate-sentiment"):
+    for name in (
+        "train-lm",
+        "sample",
+        "verify-gpt2",
+        "train-sentiment",
+        "train-sentiment-candidate",
+        "evaluate-sentiment",
+    ):
         command = commands.add_parser(name)
         command.add_argument("--config", required=True)
         command.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
-        if name in {"train-lm", "sample", "train-sentiment"}:
+        if name in {"train-lm", "sample", "train-sentiment", "train-sentiment-candidate"}:
             command.add_argument("--seed", type=int)
-        if name in {"train-lm", "train-sentiment"}:
+        if name in {"train-lm", "train-sentiment", "train-sentiment-candidate"}:
             command.add_argument("--resume", action="store_true")
+        if name == "train-sentiment-candidate":
+            command.add_argument("--summary", required=True)
     matrix = commands.add_parser("run-sentiment-matrix")
     matrix.add_argument("--config", action="append", required=True)
     matrix.add_argument("--seeds", nargs="+", type=int, required=True)
@@ -68,6 +78,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         elif args.command == "train-sentiment":
             result = train_sentiment(
                 Path(args.config),
+                device_name=args.device,
+                seed=args.seed,
+                resume=args.resume,
+            )
+            print(f"Wrote {result}")
+        elif args.command == "train-sentiment-candidate":
+            result = train_sentiment_candidate(
+                Path(args.config),
+                summary_path=Path(args.summary),
                 device_name=args.device,
                 seed=args.seed,
                 resume=args.resume,

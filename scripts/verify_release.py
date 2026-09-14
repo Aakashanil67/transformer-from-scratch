@@ -58,6 +58,15 @@ def main(argv: list[str] | None = None) -> int:
             "reports/generated-results.md",
             "--check",
         ],
+        [
+            python,
+            "scripts/render_results.py",
+            "--results",
+            "reports/results/v3",
+            "--output",
+            "reports/generated-results-v3.md",
+            "--check",
+        ],
     ]
     if args.include_install:
         commands.append([python, "scripts/verify_install.py"])

@@ -126,11 +126,13 @@ def test_train_lm_and_sample_support_the_raw_transformer(tmp_path: Path) -> None
     assert checkpoint["architecture"]["n_layer"] == 1
 
 
-def test_auto_device_resolves_to_cpu_when_cuda_is_unavailable() -> None:
+def test_auto_device_resolves_to_cpu_when_cuda_is_unavailable(monkeypatch) -> None:
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
     assert str(resolve_device("auto")) == "cpu"
 
 
-def test_cuda_request_is_explicit_when_unavailable() -> None:
+def test_cuda_request_is_explicit_when_unavailable(monkeypatch) -> None:
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
     with pytest.raises(RuntimeError, match="CUDA"):
         resolve_device("cuda")
 
@@ -241,7 +243,7 @@ validation_loss = 0.4
     assert result.exists()
     payload = json.loads(result.read_text(encoding="utf-8"))
     assert payload["guarantees"]["test_access"] is False
-    assert payload["selection"]["head_only"]["config"] == str(tmp_path / "config.toml")
+    assert payload["selection"]["head_only"]["config"] == "config.toml"
 
 
 def test_evaluate_matrix_verifies_selection_before_dispatching(monkeypatch, tmp_path: Path) -> None:
@@ -282,7 +284,15 @@ def test_evaluate_matrix_verifies_selection_before_dispatching(monkeypatch, tmp_
     assert result == expected
     assert captured["configs"] == [config]
     assert captured["seeds"] == [17]
-    assert captured["config_overrides"] == {str(config): {"optimization": {"learning_rate": 0.002}}}
+    assert captured["config_overrides"] == {
+        str(config): {
+            "optimization": {"learning_rate": 0.002},
+            "output": {
+                "directory": str(tmp_path / "runs" / "head_only"),
+                "result": str(tmp_path / "runs" / "head_only.json"),
+            },
+        }
+    }
 
 
 def test_evaluate_matrix_rejects_unavailable_and_stale_selected_candidates(tmp_path: Path) -> None:
