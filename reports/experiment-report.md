@@ -15,7 +15,7 @@ Peak allocated memory is the maximum recorded allocation across the seeds for ea
 
 | Method | Test macro-F1 (mean ± SD) | Accuracy (mean ± SD) | Peak allocated VRAM (GiB) | Status |
 | --- | ---: | ---: | ---: | --- |
-| TF-IDF + balanced logistic regression | 0.8007 (single seed 17) | 0.8533 (single seed 17) | — | completed |
+| TF-IDF + balanced logistic regression | 0.8007 (single seed 17) | 0.8533 (single seed 17) | n/a | completed |
 | GPT-2 head-only | 0.4136 ± 0.0227 | 0.6918 ± 0.0150 | 0.958 GiB | completed |
 | GPT-2 LoRA | 0.6931 ± 0.0471 | 0.7960 ± 0.0175 | 1.427 GiB | completed |
 | GPT-2 full fine-tuning | 0.8687 ± 0.0037 | 0.8996 ± 0.0039 | 3.748 GiB | completed |
@@ -32,15 +32,19 @@ The [per-seed parameter/accuracy plot](figures/macro-f1-vs-parameters.svg), [cal
 
 ## Validation-selected follow-up status
 
-The v3 candidate protocol is frozen in [`configs/sentiment/v3-protocol.toml`](../configs/sentiment/v3-protocol.toml). The protocol contains 12 entries—three settings for each of head-only, LoRA, full fine-tuning, and TF-IDF; the original plan shorthand called these nine candidates. All 12 completed successfully, and their validation-only summaries are retained in [`reports/results/v3/candidates`](results/v3/candidates). The selector rejects test-labelled fields and ranks validation macro-F1, validation cross-entropy loss, then protocol order.
+The v3 candidate protocol is frozen in [`configs/sentiment/v3-protocol.toml`](../configs/sentiment/v3-protocol.toml). It contains 12 entries: three settings for each of head-only, LoRA, full fine-tuning and TF-IDF. All 12 completed successfully, and their validation-only summaries are retained in [`reports/results/v3/candidates`](results/v3/candidates). The selector rejects test-labelled fields and ranks validation macro-F1, validation cross-entropy loss, then protocol order.
 
 The frozen validation choices are head-only `head-only-lr-1e-2`, LoRA `lora-r4-lr-1e-3`, full fine-tuning `full-lr-2e-5`, and TF-IDF `tfidf-c-10`, recorded in the [selection manifest](results/v3/selection.json). The final three-seed matrix used seeds 17, 23, and 41 for each transformer choice plus the deterministic seed-17 TF-IDF reference. Its checked aggregate table is [`generated-results-v3.md`](generated-results-v3.md), with the underlying replayable records in [`reports/results/v3`](results/v3) and derived v3 figures in [`figures/v3`](figures/v3).
 
-This is an exploratory validation-selected follow-up, not an independent holdout: the same fixed test partition is evaluated only after selection, and the selection manifest declares `test_access=false`. The aggregate builder replays the saved test predictions, checks exact example alignment and declared artefact hashes, and then recomputes the displayed means and paired bootstrap comparisons. These results should therefore be read as a post-selection follow-up alongside—not as a replacement for—the historical fixed-profile table above.
+This is an exploratory validation-selected follow-up, not an independent holdout. The same fixed test partition is evaluated only after selection, and the selection manifest declares `test_access=false`. The aggregate builder replays the saved test predictions, checks exact example alignment and declared artefact hashes, and then recomputes the displayed means and paired bootstrap comparisons. Read these results alongside the historical fixed-profile table above, not as a replacement for it.
 
-## Interpretation
+## Historical fixed-profile interpretation
 
 Full fine-tuning produced the strongest result on every seed. The paired bootstrap differences against TF-IDF were positive for all three full-tuning runs (0.06, 0.07 and 0.07 macro-F1; each 95% interval excluded zero). LoRA improved on a frozen representation but remained below TF-IDF on all three aligned comparisons. It trained 0.1793% of the combined model parameters and used substantially less memory than full tuning. This is a result for the fixed split and hardware profile, not a general ranking of adaptation methods.
+
+## Validation-selected v3 interpretation
+
+With validation-selected settings, LoRA has the highest observed mean macro-F1 across three optimisation seeds. Full tuning is higher on seed 17; LoRA is higher on seeds 23 and 41. Each paired 95% bootstrap interval for their difference includes zero, so this experiment does not establish a clear advantage between them. Both outperform TF-IDF in all three aligned comparisons. The reused test partition makes this an exploratory follow-up, not independent confirmation.
 
 ## Limitations
 

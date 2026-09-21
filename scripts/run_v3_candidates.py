@@ -10,8 +10,12 @@ from typing import Any
 
 from transformer_lab.commands import resolve_device
 from transformer_lab.config_io import ExperimentConfig, effective_config, load_experiment_config
-from transformer_lab.experiments.manifests import config_digest
-from transformer_lab.experiments.selection import load_selection_protocol
+from transformer_lab.experiments.manifests import config_digest, resolve_run
+from transformer_lab.experiments.selection import (
+    candidate_identity,
+    load_selection_protocol,
+    validate_candidate_summary,
+)
 from transformer_lab.experiments.sentiment import run_sentiment_candidate
 
 
@@ -21,12 +25,9 @@ def _candidate_config(
     *,
     summary_path: Path,
     run_root: Path | None = None,
+    selection_seed: int,
 ) -> tuple[ExperimentConfig, ExperimentConfig]:
-    optimization = dict(config.optimization)
-    for key in ("learning_rate", "c"):
-        if key in candidate:
-            optimization[key] = candidate[key]
-    identity = replace(config, optimization=optimization)
+    identity = candidate_identity(config, candidate, selection_seed=selection_seed)
     artifact_root = run_root or summary_path.parent
     run_config = replace(
         identity,
@@ -76,6 +77,9 @@ def run_protocol(
     )
     device = resolve_device(device_name)
     failures = 0
+    selection_seed = protocol.get("selection_seed", 17)
+    if isinstance(selection_seed, bool) or not isinstance(selection_seed, int):
+        raise ValueError("selection protocol.selection_seed must be an integer")
     for index, candidate in enumerate(candidates, start=1):
         config_path = Path(str(candidate["config"]))
         if not config_path.is_absolute():
@@ -91,13 +95,22 @@ def run_protocol(
             candidate,
             summary_path=summary_path,
             run_root=artifact_root.resolve() / str(candidate["candidate_id"]),
+            selection_seed=selection_seed,
         )
-        if resume and not refresh and summary_path.exists():
+        runtime_config = resolve_run(run_config, seed=selection_seed)
+        runtime_artifact_root = Path(str(runtime_config.output["directory"]))
+        if summary_path.exists():
             try:
                 payload = json.loads(summary_path.read_text(encoding="utf-8"))
-            except (OSError, json.JSONDecodeError):
-                payload = {}
-            if payload.get("status") in {"completed", "failed", "unavailable"}:
+            except (OSError, json.JSONDecodeError) as err:
+                raise ValueError(f"invalid candidate summary: {summary_path}") from err
+            validate_candidate_summary(
+                payload,
+                candidate=candidate,
+                identity=identity,
+                artifact_root=runtime_artifact_root,
+            )
+            if resume and not refresh:
                 print(f"[{index}/{len(candidates)}] reusing {candidate['candidate_id']}")
                 if payload.get("status") != "completed":
                     failures += 1
@@ -113,14 +126,21 @@ def run_protocol(
                 candidate_id=str(candidate["candidate_id"]),
                 identity_config=identity,
             )
-            payload = json.loads(summary_path.read_text(encoding="utf-8"))
-            if payload.get("status") != "completed":
-                failures += 1
-            print(f"[{index}/{len(candidates)}] {payload.get('status', 'missing')}", flush=True)
         except Exception as error:  # noqa: BLE001 - preserve every candidate outcome
             _write_failure(summary_path, candidate=candidate, identity=identity, error=error)
             failures += 1
             print(f"[{index}/{len(candidates)}] failed: {error}", flush=True)
+            continue
+        payload = json.loads(summary_path.read_text(encoding="utf-8"))
+        validate_candidate_summary(
+            payload,
+            candidate=candidate,
+            identity=identity,
+            artifact_root=runtime_artifact_root,
+        )
+        if payload.get("status") != "completed":
+            failures += 1
+        print(f"[{index}/{len(candidates)}] {payload.get('status', 'missing')}", flush=True)
     print(
         json.dumps(
             {"protocol": protocol["name"], "candidates": len(candidates), "failures": failures}

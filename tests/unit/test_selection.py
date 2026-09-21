@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 
@@ -77,6 +78,141 @@ def test_selection_manifest_round_trip_and_schema_checks(tmp_path) -> None:
     payload["selection"]["head_only"]["test"] = {"macro_f1": 0.9}
     path.write_text(json.dumps(payload), encoding="utf-8")
     with pytest.raises(ValueError, match="test"):
+        load_selection_manifest(path)
+
+
+def test_manifest_rejects_a_non_winning_candidate(tmp_path):
+    candidates = [
+        _candidate("head-low", "head_only", 0.6, 0.8, 0),
+        _candidate("head-high", "head_only", 0.8, 0.4, 1),
+    ]
+    path = write_selection_manifest(
+        tmp_path / "selection.json",
+        protocol={"name": "fixture", "split_seed": 17},
+        candidates=candidates,
+    )
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["selection"]["head_only"] = select_candidates(candidates[:1])["head_only"]
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="selection"):
+        load_selection_manifest(path)
+
+
+@pytest.mark.parametrize(
+    ("mutate", "message"),
+    [
+        (
+            lambda selection: selection["overrides"]["optimization"].update({"learning_rate": 0.9}),
+            "selection",
+        ),
+        (
+            lambda selection: selection["selection_metric"].update({"validation_macro_f1": 0.1}),
+            "selection",
+        ),
+        (
+            lambda selection: selection["candidates"][0].update({"candidate_id": "changed"}),
+            "selection",
+        ),
+        (lambda selection: selection.update({"config_digest": "changed"}), "selection"),
+        (
+            lambda selection: selection["considered_candidates"].clear(),
+            "selection",
+        ),
+    ],
+)
+def test_manifest_rejects_tampered_selection_evidence(tmp_path, mutate, message):
+    candidates = [_candidate("head-1", "head_only", 0.7, 0.4, 0)]
+    path = write_selection_manifest(
+        tmp_path / "selection.json", protocol={"name": "fixture"}, candidates=candidates
+    )
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    mutate(payload["selection"]["head_only"])
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match=message):
+        load_selection_manifest(path)
+
+
+def test_manifest_rejects_duplicate_order_and_missing_candidates(tmp_path):
+    candidates = [
+        _candidate("head-1", "head_only", 0.7, 0.4, 0),
+        _candidate("head-2", "head_only", 0.6, 0.5, 1),
+    ]
+    path = write_selection_manifest(
+        tmp_path / "selection.json", protocol={"name": "fixture"}, candidates=candidates
+    )
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["candidates"][1]["order"] = 0
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ValueError, match="order"):
+        load_selection_manifest(path)
+
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "kind": "sentiment-selection",
+                "protocol": {"name": "fixture"},
+                "candidates": None,
+                "selection": {},
+                "guarantees": {"selection_data": "validation_only", "test_access": False},
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="candidates"):
+        load_selection_manifest(path)
+
+
+def test_manifest_rejects_nan_and_null_guarantees(tmp_path):
+    candidate = _candidate("head-1", "head_only", 0.7, 0.4, 0)
+    path = write_selection_manifest(
+        tmp_path / "selection.json", protocol={"name": "fixture"}, candidates=[candidate]
+    )
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["candidates"][0]["validation"]["macro_f1"] = float("nan")
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ValueError, match="finite"):
+        load_selection_manifest(path)
+
+    payload["candidates"][0]["validation"]["macro_f1"] = 0.7
+    payload["guarantees"] = None
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ValueError, match="guarantees"):
+        load_selection_manifest(path)
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("test_access", True, "test_access"),
+        ("selection_data", "test", "validation_only"),
+    ],
+)
+def test_manifest_rejects_contradictory_guarantees(tmp_path, field, value, message):
+    candidate = _candidate("head-1", "head_only", 0.7, 0.4, 0)
+    path = write_selection_manifest(
+        tmp_path / "selection.json", protocol={"name": "fixture"}, candidates=[candidate]
+    )
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["guarantees"][field] = value
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match=message):
+        load_selection_manifest(path)
+
+
+def test_manifest_rejects_an_empty_selection_mapping(tmp_path):
+    candidate = _candidate("head-1", "head_only", 0.7, 0.4, 0)
+    path = write_selection_manifest(
+        tmp_path / "selection.json", protocol={"name": "fixture"}, candidates=[candidate]
+    )
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["selection"] = {}
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="selected methods"):
         load_selection_manifest(path)
 
 
@@ -199,7 +335,32 @@ summary = "missing/summary.json"
 
     _, candidates = load_selection_protocol(path, allow_missing_summaries=True)
 
-    assert candidates[0]["summary_path"].endswith("missing\\summary.json")
+    assert Path(candidates[0]["summary_path"]) == (tmp_path / "missing" / "summary.json").resolve()
+
+
+def test_selection_protocol_summary_path_is_independent_of_working_directory(tmp_path, monkeypatch):
+    path = tmp_path / "protocol.toml"
+    path.write_text(
+        """
+[protocol]
+name = "fixture"
+
+[[candidates]]
+candidate_id = "head-1"
+method = "head_only"
+order = 0
+summary = "missing/summary.json"
+""",
+        encoding="utf-8",
+    )
+
+    _, first = load_selection_protocol(path, allow_missing_summaries=True)
+    monkeypatch.chdir(tmp_path.parent)
+    _, second = load_selection_protocol(path, allow_missing_summaries=True)
+
+    expected = (tmp_path / "missing" / "summary.json").resolve()
+    assert Path(first[0]["summary_path"]) == expected
+    assert Path(second[0]["summary_path"]) == expected
 
 
 @pytest.mark.parametrize(
@@ -229,6 +390,7 @@ def test_selection_manifest_rejects_invalid_payloads(tmp_path, payload, message)
             "non-empty",
         ),
         ("[protocol]\nname='x'\ntest_file='x'\n\n[[candidates]]\ncandidate_id='x'", "test"),
+        ("candidates = []\n\n[protocol]\nname='x'", "at least one"),
     ],
 )
 def test_selection_protocol_rejects_invalid_shapes(tmp_path, contents: str, message: str) -> None:

@@ -10,7 +10,7 @@ The project is deliberately inspectable. The important operations are in `src/tr
 
 The project asks whether a small, readable transformer can reproduce a public GPT-2 checkpoint closely enough to support genuine generation and downstream classification. A toy language-model loss cannot answer that on its own. The repository therefore checks the forward pass against pinned GPT-2 weights, compares parameter-efficient sentiment updates with full tuning and a TF-IDF reference, and keeps the artefacts required to replay each score.
 
-## Verified results
+## Verified historical results (fixed profile)
 
 | Check | Result |
 | --- | --- |
@@ -25,7 +25,9 @@ The project asks whether a small, readable transformer can reproduce a public GP
 
 The result summaries are tracked in [`reports/results`](reports/results). Raw data, pretrained weights, checkpoints, and transient run files are ignored. The GPT-2 parity summary uses the pinned `openai-community/gpt2` revision `607a30d783dfa663caf39e06633721c8d4cfcd7e`. The Financial PhraseBank archive uses dataset revision `8d3fe0c36d5feec6b3cc5e455b0fcb4820fb9964`.
 
-The exploratory v3 follow-up freezes hyperparameters from validation-only candidate runs before evaluating seeds 17, 23, and 41. Its checked table is [`reports/generated-results-v3.md`](reports/generated-results-v3.md), with the [selection manifest](reports/results/v3/selection.json), [12 candidate summaries](reports/results/v3/candidates), and replayable [per-seed records](reports/results/v3/runs). It is a post-selection follow-up on the same fixed test partition, not an independent holdout.
+## Exploratory v3 follow-up (validation-selected)
+
+The current comparison table is [`reports/generated-results-v3.md`](reports/generated-results-v3.md). Its settings were selected from validation-only candidate runs and frozen in the [selection manifest](reports/results/v3/selection.json) before seeds 17, 23, and 41 were evaluated. The manifest, [12 candidate summaries](reports/results/v3/candidates), and replayable [per-seed records](reports/results/v3/runs) are retained with the table. The follow-up reuses the historical test partition, so it is exploratory rather than an independent holdout; it should not be read as a benchmark record or a general method ranking.
 
 ## Install
 
@@ -77,7 +79,7 @@ Run the Financial PhraseBank reference model:
 .venv\Scripts\transformer-lab.exe evaluate-sentiment --config configs\sentiment\baseline.toml --device cpu
 ```
 
-The GPT-2 sentiment profiles share the same duplicate-safe split and metric code. The recorded runs used the documented CUDA 12.8 environment on a GeForce GTX 1650:
+The GPT-2 sentiment profiles share the same duplicate-safe split and metric code. The recorded historical runs used the documented CUDA 12.8 environment on a GeForce GTX 1650:
 
 ```powershell
 .venv-gpu\Scripts\transformer-lab.exe train-sentiment --config configs\sentiment\head-only-gpt2-small.toml --device cuda
@@ -86,11 +88,13 @@ The GPT-2 sentiment profiles share the same duplicate-safe split and metric code
 .venv-gpu\Scripts\transformer-lab.exe evaluate-sentiment --config configs\sentiment\lora-gpt2-small.toml --device cuda
 ```
 
-For the reported comparison, keep the split seed at 17 and vary only the optimisation seed. The command checkpoints every epoch and can resume after an interruption:
+For the historical fixed-profile comparison, keep the split seed at 17 and vary only the optimisation seed. The command checkpoints every epoch and can resume after an interruption:
 
 ```powershell
 .venv-gpu\Scripts\transformer-lab.exe run-sentiment-matrix --config configs\sentiment\baseline.toml --config configs\sentiment\head-only-gpt2-small.toml --config configs\sentiment\lora-gpt2-small.toml --config configs\sentiment\full-gpt2-small.toml --seeds 17 23 41 --device cuda --output reports\results\financial-phrasebank-comparison.json --resume
 ```
+
+The exact commands for the exploratory v3 candidate, selection and final-evaluation stages are in [`docs/gpu-setup.md`](docs/gpu-setup.md). Candidate training and final evaluation write result files and may overwrite their explicitly supplied output paths; use `--resume` only with matching evidence. The read-only replay and verification commands do not write to the tracked result paths.
 
 ## Local playground
 
@@ -100,7 +104,7 @@ After GPT-2 parity and the sentiment runs have produced their ignored local arte
 .venv\Scripts\python.exe -m streamlit run app\playground.py
 ```
 
-The Generation tab samples from the local implementation loaded with mapped GPT-2 small weights. The Sentiment tab defaults to the seed-17 local LoRA checkpoint and retains TF-IDF as a comparison. Both return genuine model outputs. The app performs no network download while serving a request; missing artefacts produce setup instructions instead.
+The Generation tab samples from the local implementation loaded with mapped GPT-2 small weights. The Sentiment tab defaults to the validation-selected exploratory v3 profile and also exposes the historical fixed profile; each profile keeps its own verified result records and model paths. Both return genuine model outputs. The app performs no network download while serving a request; missing artefacts produce setup instructions instead.
 
 ## What is implemented
 

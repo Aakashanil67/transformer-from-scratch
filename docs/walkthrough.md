@@ -20,6 +20,6 @@ Run the CPU tests first, then the pinned parity command. For sentiment, use the 
 
 ## 5. Explain the strongest failed method
 
-Head-only training is the useful failure: it reaches 0.4136 mean test macro-F1 and never predicts the negative class correctly in the seed-17 diagnostic. A frozen GPT-2 representation plus a small linear head cannot reshape the representation enough for this split. LoRA improves the score but remains below TF-IDF in the historical profile; full tuning is strongest while using more memory. These are fixed-split observations, not universal method rankings.
+Head-only training is the useful historical failure: the recorded low-learning-rate profile reaches 0.4136 mean test macro-F1 and never predicts the negative class correctly in the seed-17 diagnostic. The v3 validation-selected higher head learning rate improves the measured score without changing the frozen representation, so the older result does not prove that the representation has an architectural ceiling. LoRA improves in the historical profile but remains below TF-IDF there; in the exploratory v3 profile it has the highest observed mean, while the paired intervals do not establish a clear advantage over full tuning. These are fixed-split observations, not universal method rankings.
 
 The scratch language-model command is a third, separate story: it trains the local decoder from random weights on byte tokens. Its loss curve should be read as evidence that the implementation learns, not as a directly comparable GPT-2 perplexity.

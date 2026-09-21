@@ -14,8 +14,12 @@ from transformer_lab.commands import (
     train_lm,
 )
 from transformer_lab.config_io import effective_config, load_experiment_config
-from transformer_lab.experiments.manifests import build_manifest, resolve_run
-from transformer_lab.experiments.selection import write_selection_manifest
+from transformer_lab.experiments.manifests import build_manifest, config_digest, resolve_run
+from transformer_lab.experiments.selection import (
+    candidate_identity,
+    select_candidates,
+    write_selection_manifest,
+)
 
 
 def _write_config(root: Path) -> Path:
@@ -90,6 +94,38 @@ result = "transformer.json"
 prompt = "a"
 max_new_tokens = 2
 do_sample = false
+""",
+        encoding="utf-8",
+    )
+    return config
+
+
+def _write_sentiment_selection_config(root: Path, *, mode: str = "head_only") -> Path:
+    config = root / f"{mode}.toml"
+    config.write_text(
+        f"""
+[experiment]
+name = "selection-{mode}"
+kind = "sentiment"
+[model]
+mode = "{mode}"
+num_labels = 3
+[data]
+dataset_revision = "fixture-revision"
+subset = "75Agree"
+max_length = 64
+split_seed = 17
+[optimization]
+epochs = 3
+batch_size = 1
+learning_rate = 0.001
+gradient_accumulation_steps = 16
+[evaluation]
+bootstrap_samples = 1000
+seed = 17
+[output]
+directory = "run"
+result = "result.json"
 """,
         encoding="utf-8",
     )
@@ -248,21 +284,23 @@ validation_loss = 0.4
 
 def test_evaluate_matrix_verifies_selection_before_dispatching(monkeypatch, tmp_path: Path) -> None:
     selection = tmp_path / "selection.json"
-    config = tmp_path / "config.toml"
+    config = _write_sentiment_selection_config(tmp_path)
+    candidate = {
+        "candidate_id": "head-1",
+        "method": "head_only",
+        "order": 0,
+        "status": "completed",
+        "validation": {"macro_f1": 0.7, "loss": 0.4},
+        "config": str(config),
+        "learning_rate": 0.002,
+    }
+    identity = candidate_identity(load_experiment_config(config), candidate, selection_seed=17)
+    candidate["config_digest"] = config_digest(identity)
+    candidate["effective_config"] = effective_config(identity)
     write_selection_manifest(
         selection,
         protocol={"name": "fixture"},
-        candidates=[
-            {
-                "candidate_id": "head-1",
-                "method": "head_only",
-                "order": 0,
-                "status": "completed",
-                "validation": {"macro_f1": 0.7, "loss": 0.4},
-                "config": str(config),
-                "learning_rate": 0.002,
-            }
-        ],
+        candidates=[candidate],
     )
     expected = tmp_path / "comparison.json"
     captured: dict[str, object] = {}
@@ -296,7 +334,7 @@ def test_evaluate_matrix_verifies_selection_before_dispatching(monkeypatch, tmp_
 
 
 def test_evaluate_matrix_rejects_unavailable_and_stale_selected_candidates(tmp_path: Path) -> None:
-    config = _write_config(tmp_path)
+    config = _write_sentiment_selection_config(tmp_path)
     unavailable = tmp_path / "unavailable.json"
     write_selection_manifest(
         unavailable,
@@ -331,3 +369,39 @@ def test_evaluate_matrix_rejects_unavailable_and_stale_selected_candidates(tmp_p
     )
     with pytest.raises(ValueError, match="stale"):
         evaluate_matrix(stale, seeds=[17], device_name="cpu", output=tmp_path / "out.json")
+
+
+def test_evaluate_matrix_rejects_a_modified_non_winning_selection(
+    monkeypatch, tmp_path: Path
+) -> None:
+    config = _write_sentiment_selection_config(tmp_path)
+    candidates = []
+    for candidate_id, macro_f1, learning_rate, order in (
+        ("head-low", 0.6, 0.001, 0),
+        ("head-high", 0.8, 0.002, 1),
+    ):
+        candidate = {
+            "candidate_id": candidate_id,
+            "method": "head_only",
+            "order": order,
+            "status": "completed",
+            "validation": {"macro_f1": macro_f1, "loss": 0.4},
+            "config": str(config),
+            "learning_rate": learning_rate,
+        }
+        identity = candidate_identity(load_experiment_config(config), candidate, selection_seed=17)
+        candidate["config_digest"] = config_digest(identity)
+        candidate["effective_config"] = effective_config(identity)
+        candidates.append(candidate)
+    selection = tmp_path / "selection.json"
+    write_selection_manifest(selection, protocol={"name": "fixture"}, candidates=candidates)
+    payload = json.loads(selection.read_text(encoding="utf-8"))
+    payload["selection"]["head_only"] = select_candidates(candidates[:1])["head_only"]
+    selection.write_text(json.dumps(payload), encoding="utf-8")
+    monkeypatch.setattr(
+        "transformer_lab.commands.run_sentiment_matrix",
+        lambda *args, **kwargs: pytest.fail("inconsistent selection must not dispatch"),
+    )
+
+    with pytest.raises(ValueError, match="selection"):
+        evaluate_matrix(selection, seeds=[17], device_name="cpu", output=tmp_path / "out.json")

@@ -20,6 +20,7 @@ jobs:
       - run: python -m build
       - run: python -m pip check
       - run: python scripts/render_results.py --results reports/results --output reports/generated-results.md --check
+      - run: python scripts/render_results.py --results reports/results/v3 --output reports/generated-results-v3.md --check
       - run: python scripts/verify_install.py --wheel "$(find dist -name '*.whl' -print -quit)"
 
   linux-py311:

@@ -28,6 +28,25 @@ def test_app_ignores_malformed_completed_test_metrics() -> None:
     )
 
 
+def test_app_ignores_out_of_range_aggregate_metrics() -> None:
+    from app.playground import _comparison_summary
+
+    record = {
+        "status": "completed",
+        "metrics": {
+            "methods": {
+                "lora": {
+                    "seeds": [17, 23, 41],
+                    "macro_f1": {"mean": 1.2, "standard_deviation": 0.01},
+                    "accuracy": {"mean": 0.9, "standard_deviation": -0.01},
+                }
+            }
+        },
+    }
+
+    assert _comparison_summary(record, "lora") is None
+
+
 def test_app_uses_a_hash_verified_artifact_only(tmp_path) -> None:
     import hashlib
     import json

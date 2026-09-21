@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import random
+import re
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -24,6 +25,31 @@ from transformer_lab.experiments.runtime import (
 from transformer_lab.models.bigram import BigramLanguageModel
 from transformer_lab.models.transformer import DecoderOnlyTransformer
 from transformer_lab.training import TrainingConfig, train_language_model
+
+_CONFIG_DIGEST = re.compile(r"^[0-9a-f]{64}$")
+_SELECTION_OVERRIDE_KEYS = {
+    "model": {
+        "base_model",
+        "model_revision",
+        "num_labels",
+        "mode",
+        "lora_rank",
+        "lora_alpha",
+        "lora_dropout",
+        "target_modules",
+    },
+    "data": {"dataset_revision", "subset", "max_length", "split_seed"},
+    "optimization": {
+        "epochs",
+        "batch_size",
+        "learning_rate",
+        "weight_decay",
+        "gradient_accumulation_steps",
+        "max_grad_norm",
+        "amp",
+    },
+    "evaluation": {"bootstrap_samples", "seed"},
+}
 
 
 def resolve_device(requested: str) -> torch.device:
@@ -392,9 +418,29 @@ def evaluate_matrix(
     resume: bool = False,
 ) -> Path:
     """Evaluate only the configurations frozen by a validated selection manifest."""
-    from transformer_lab.experiments.selection import load_selection_manifest
+    from transformer_lab.experiments.selection import (
+        candidate_identity,
+        load_selection_manifest,
+    )
 
     selection = load_selection_manifest(selection_path.resolve())
+    protocol = selection.get("protocol")
+    if not isinstance(protocol, dict):
+        raise ValueError("selection manifest protocol must be an object")
+    if any(isinstance(seed, bool) or not isinstance(seed, int) for seed in seeds):
+        raise ValueError("matrix seeds must be integers")
+    if len(set(seeds)) != len(seeds):
+        raise ValueError("matrix seeds must be unique")
+    final_seeds = protocol.get("final_seeds")
+    if final_seeds is not None:
+        if (
+            not isinstance(final_seeds, list)
+            or any(isinstance(seed, bool) or not isinstance(seed, int) for seed in final_seeds)
+            or len(set(final_seeds)) != len(final_seeds)
+        ):
+            raise ValueError("selection protocol final_seeds must be unique integers")
+        if seeds != final_seeds:
+            raise ValueError("matrix seeds disagree with the frozen selection protocol")
     config_paths: list[Path] = []
     config_overrides: dict[str, dict[str, Any]] = {}
     matrix_root = output.resolve().parent / "runs"
@@ -408,32 +454,41 @@ def evaluate_matrix(
         if not config_path.is_absolute():
             config_path = (selection_path.resolve().parent / config_path).resolve()
         expected_digest = chosen.get("config_digest")
-        if expected_digest is not None:
-            if not isinstance(expected_digest, str):
-                raise ValueError(f"selection candidate for {method} has invalid config digest")
-            selected_config = load_experiment_config(config_path)
-            overrides = chosen.get("overrides", {})
-            if not isinstance(overrides, dict):
-                raise ValueError(f"selection candidate for {method} has invalid overrides")
-            selected_config = replace(
-                selected_config,
-                model={**dict(selected_config.model), **dict(overrides.get("model", {}))},
-                data={**dict(selected_config.data), **dict(overrides.get("data", {}))},
-                optimization={
-                    **dict(selected_config.optimization),
-                    **dict(overrides.get("optimization", {})),
-                },
-                evaluation={
-                    **dict(selected_config.evaluation),
-                    **dict(overrides.get("evaluation", {})),
-                },
-            )
-            if config_digest(selected_config) != expected_digest:
-                raise ValueError(f"selection candidate for {method} has a stale configuration")
+        if not isinstance(expected_digest, str) or not _CONFIG_DIGEST.fullmatch(expected_digest):
+            raise ValueError(f"selection candidate for {method} has invalid config digest")
+        selected_config = load_experiment_config(config_path)
+        overrides = chosen.get("overrides", {})
+        selected_config = _apply_selection_overrides(selected_config, overrides, method=method)
+        winner_id = chosen.get("candidate_id")
+        embedded = chosen.get("candidates")
+        if not isinstance(embedded, list):
+            raise ValueError(f"selection candidate for {method} has no candidate evidence")
+        winner = next(
+            (
+                candidate
+                for candidate in embedded
+                if isinstance(candidate, dict) and candidate.get("candidate_id") == winner_id
+            ),
+            None,
+        )
+        if not isinstance(winner, dict):
+            raise ValueError(f"selection candidate for {method} has no winning candidate evidence")
+        if winner.get("method") != method or selected_config.model.get("mode") != method:
+            raise ValueError(f"selection candidate for {method} disagrees with its model mode")
+        selection_seed = protocol.get("selection_seed", selected_config.evaluation.get("seed", 17))
+        identity = candidate_identity(
+            load_experiment_config(config_path), winner, selection_seed=selection_seed
+        )
+        if effective_config(identity) != effective_config(selected_config):
+            raise ValueError(f"selection candidate for {method} has a stale configuration")
+        if config_digest(identity) != expected_digest:
+            raise ValueError(f"selection candidate for {method} has a stale configuration")
+        if winner.get("effective_config") is not None and winner[
+            "effective_config"
+        ] != effective_config(identity):
+            raise ValueError(f"selection candidate for {method} has stale effective configuration")
         config_paths.append(config_path)
         overrides = chosen.get("overrides", {})
-        if not isinstance(overrides, dict):
-            raise ValueError(f"selection candidate for {method} has invalid overrides")
         config_overrides[str(config_path)] = {
             **overrides,
             "output": {
@@ -450,4 +505,33 @@ def evaluate_matrix(
         output=output,
         resume=resume,
         config_overrides=config_overrides,
+    )
+
+
+def _apply_selection_overrides(
+    config: ExperimentConfig,
+    overrides: Any,
+    *,
+    method: str,
+) -> ExperimentConfig:
+    if not isinstance(overrides, dict):
+        raise ValueError(f"selection candidate for {method} has invalid overrides")
+    sections: dict[str, dict[str, Any]] = {}
+    for section, values in overrides.items():
+        if section not in _SELECTION_OVERRIDE_KEYS:
+            raise ValueError(f"selection candidate for {method} has unknown override section")
+        if not isinstance(values, dict):
+            raise ValueError(f"selection candidate for {method} has invalid {section} overrides")
+        unknown = sorted(set(values) - _SELECTION_OVERRIDE_KEYS[section])
+        if unknown:
+            raise ValueError(
+                f"selection candidate for {method} has unknown override key {section}.{unknown[0]}"
+            )
+        sections[section] = values
+    return replace(
+        config,
+        model={**dict(config.model), **sections.get("model", {})},
+        data={**dict(config.data), **sections.get("data", {})},
+        optimization={**dict(config.optimization), **sections.get("optimization", {})},
+        evaluation={**dict(config.evaluation), **sections.get("evaluation", {})},
     )
