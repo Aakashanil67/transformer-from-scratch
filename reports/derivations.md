@@ -1,6 +1,6 @@
 # Transformer derivation notes
 
-These notes connect the equations to the tensors in `src/transformer_lab`. They describe identities used by the implementation; empirical statements appear in the experiment report instead.
+These notes connect the equations to the tensors in `src/transformer_lab`. They describe identities used by the implementation. Empirical statements appear in the experiment report instead.
 
 ## Embeddings and positions
 
@@ -16,7 +16,7 @@ Let `V` be the vocabulary size, `T` the context length, `d` the model width, and
 
 `Vd + Td + L(12d² + 13d) + 2d`.
 
-The first two terms are token and position embeddings. Each block contributes `12d²` weights from the `d → 3d` attention projection, `d → d` output projection, and the two `d → 4d → d` MLP projections. Its `13d` affine terms are 9d linear biases and 4d LayerNorm weight/bias terms. The final LayerNorm contributes `2d`; the language-model head is tied to the token embedding and adds no new parameters. With `bias=False`, linear biases and LayerNorm biases disappear, leaving `Vd + Td + L(12d² + 2d) + d`; LayerNorm weights remain.
+The first two terms are token and position embeddings. Each block contributes `12d²` weights from the `d → 3d` attention projection, `d → d` output projection, and the two `d → 4d → d` MLP projections. Its `13d` affine terms are 9d linear biases and 4d LayerNorm weight/bias terms. The final LayerNorm contributes `2d`. The language-model head is tied to the token embedding and adds no new parameters. With `bias=False`, linear biases and LayerNorm biases disappear, leaving `Vd + Td + L(12d² + 2d) + d`. LayerNorm weights remain.
 
 For a three-class classifier, add `dC + C` for the head. Attention-only rank-`r` LoRA adds `Lr(d + 3d + d + d) = 6Lrd`: `4rd` for `c_attn` and `2rd` for `c_proj`. These formulae count stored parameters, not optimiser state or activation memory.
 
@@ -34,7 +34,7 @@ The causal mask `M` is zero on and below the diagonal and negative infinity abov
 
 `A = softmax(S + M)` and `O = AV`.
 
-Consider three positions. Before masking, position 1 could assign probability to keys 1, 2, or 3. After masking, its row is `[s_11, -infinity, -infinity]`, so `softmax` returns `[1, 0, 0]`. Position 2 receives keys 1 and 2; position 3 receives all three. No row can read a future value. The factor `1/sqrt(d_k)` keeps the dot-product scale approximately stable as the head width changes.
+Consider three positions. Before masking, position 1 could assign probability to keys 1, 2, or 3. After masking, its row is `[s_11, -infinity, -infinity]`, so `softmax` returns `[1, 0, 0]`. Position 2 receives keys 1 and 2. Position 3 receives all three. No row can read a future value. The factor `1/sqrt(d_k)` keeps the dot-product scale approximately stable as the head width changes.
 
 The model splits `(B, T, 3d)` into Q, K, and V, reshapes each to `(B, n_head, T, d_k)`, transposes the sequence and head axes for the matrix products, and reverses that operation before the output projection.
 
@@ -68,9 +68,9 @@ The language-model head has weight matrix `W` with shape `(V, d)`. The local mod
 
 ## Byte-level BPE
 
-The tokenizer starts with the 256 possible byte values. Given a UTF-8 byte sequence, it counts adjacent pairs and chooses the pair with highest frequency; ties are resolved by the numeric pair. If `(a, b)` is assigned new ID `n`, its vocabulary entry is the concatenation `v[n] = v[a] + v[b]`. Encoding applies learned merges in order. Decoding concatenates the stored byte strings and decodes UTF-8.
+The tokenizer starts with the 256 possible byte values. Given a UTF-8 byte sequence, it counts adjacent pairs and chooses the pair with highest frequency. Ties are resolved by the numeric pair. If `(a, b)` is assigned new ID `n`, its vocabulary entry is the concatenation `v[n] = v[a] + v[b]`. Encoding applies learned merges in order. Decoding concatenates the stored byte strings and decodes UTF-8.
 
-For six byte tokens `[a, a, a, a, a, a]`, the first frequent pair `(a, a)` becomes one token representing `aa`; non-overlapping replacement produces `[aa, aa, aa]`, which still decodes to six `a` bytes. A later rule can merge `(aa, aa)` if the vocabulary budget and corpus frequency allow it. Tokens are vocabulary entries, token IDs are their integer indices, and decoded text is the byte concatenation after lookup. Because the base alphabet contains every byte and the vocabulary stores byte strings, a successful encode/decode round trip is lossless for valid UTF-8. The implementation is intentionally educational: it has no GPT-2 pre-tokenisation rules and recomputes pair counts at each merge.
+For six byte tokens `[a, a, a, a, a, a]`, the first frequent pair `(a, a)` becomes one token representing `aa`. Non-overlapping replacement produces `[aa, aa, aa]`, which still decodes to six `a` bytes. A later rule can merge `(aa, aa)` if the vocabulary budget and corpus frequency allow it. Tokens are vocabulary entries, token IDs are their integer indices, and decoded text is the byte concatenation after lookup. Because the base alphabet contains every byte and the vocabulary stores byte strings, a successful encode/decode round trip is lossless for valid UTF-8. This tokenizer has no GPT-2 pre-tokenisation rules and recomputes pair counts at each merge.
 
 ## LoRA
 
@@ -80,7 +80,7 @@ For a frozen linear projection `W` with input width `d_in` and output width `d_o
 
 where `A` has shape `(r, d_in)` and `B` has shape `(d_out, r)`. The update has rank at most `r`, and its trainable parameter count is `r(d_in + d_out)` instead of `d_in d_out + d_out` for the base projection.
 
-The local adapter initialises `B` to zero. Therefore the first adapter forward pass equals the frozen base exactly. On the first backward pass, `B` receives a gradient while `A` receives zero because the path through `A` is multiplied by the zero matrix. Once `B` has moved away from zero, both factors receive gradients; the base parameters remain frozen. For GPT-2 small, targeting `c_attn` and `c_proj` in all 12 blocks adds 221,184 adapter parameters. With the 2,307-parameter classifier head, the measured LoRA run trains 223,491 of 124,663,299 parameters.
+The local adapter initialises `B` to zero. Therefore the first adapter forward pass equals the frozen base exactly. On the first backward pass, `B` receives a gradient while `A` receives zero because the path through `A` is multiplied by the zero matrix. Once `B` has moved away from zero, both factors receive gradients. The base parameters remain frozen. For GPT-2 small, targeting `c_attn` and `c_proj` in all 12 blocks adds 221,184 adapter parameters. With the 2,307-parameter classifier head, the measured LoRA run trains 223,491 of 124,663,299 parameters.
 
 ## GPT-2 conversion
 

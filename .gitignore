@@ -22,3 +22,11 @@ checkpoints/
 *.pth
 *.safetensors
 *.log
+
+# Local workspace files
+/.claude/
+/.codex/
+/.agents/
+/docs/superpowers/
+/Project 5 - AUTOPILOT - Transformer From Scratch + LoRA.md
+/Project 5 - Transformer From Scratch + LoRA.pdf

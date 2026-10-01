@@ -270,7 +270,7 @@ def build_comparison(
         run_id="financial-phrasebank-comparison",
         status="completed",
         data={"split_fingerprint": split_fingerprints.pop()},
-        # The aggregate has no standalone TOML configuration; keep the source
+        # The aggregate has no standalone TOML configuration. Keep the source
         # fingerprint while leaving the configuration fingerprint explicitly null.
         provenance=source_provenance(destination.with_name(".comparison-config.toml")),
         metrics={

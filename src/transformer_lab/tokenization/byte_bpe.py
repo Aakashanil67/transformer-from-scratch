@@ -66,11 +66,9 @@ class ByteBPETokenizer:
         return token_ids
 
     def decode(self, token_ids: list[int]) -> str:
-        """Convert token IDs back to UTF-8 text."""
         return b"".join(self.vocabulary[token_id] for token_id in token_ids).decode("utf-8")
 
     def save(self, destination: Path) -> None:
-        """Save merge rules in a compact JSON format."""
         payload = {"version": 1, "merges": [list(pair) for pair in self.merges]}
         destination.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 

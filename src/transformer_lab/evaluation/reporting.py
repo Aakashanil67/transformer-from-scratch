@@ -71,7 +71,7 @@ def validate_result_payload(payload: Mapping[str, Any]) -> None:
 def format_gib(byte_count: int | float | None) -> str:
     """Format bytes as binary GiB, never decimal GB."""
     if byte_count is None:
-        return "—"
+        return "n/a"
     if isinstance(byte_count, bool) or not isinstance(byte_count, int | float):
         raise ValueError("memory must be numeric bytes")
     if byte_count < 0 or not math.isfinite(float(byte_count)):

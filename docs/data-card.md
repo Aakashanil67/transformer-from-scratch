@@ -4,7 +4,7 @@
 
 The experiment downloads the `financial_phrasebank` dataset from [Hugging Face](https://huggingface.co/datasets/takala/financial_phrasebank) at revision `8d3fe0c36d5feec6b3cc5e455b0fcb4820fb9964`. It reads the `Sentences_75Agree.txt` member of `FinancialPhraseBank-v1.0.zip` and applies the archive's Latin-1 decoding.
 
-The dataset contains financial news sentences labelled `negative`, `neutral`, or `positive`. The project uses the 75-agreement subset, with 3,453 rows and 3,448 exact sentence groups. Five rows are repeated sentences; no duplicate group crosses a split.
+The dataset contains financial news sentences labelled `negative`, `neutral`, or `positive`. The project uses the 75-agreement subset, with 3,453 rows and 3,448 exact sentence groups. Five rows are repeated sentences. No duplicate group crosses a split.
 
 ## Split and provenance
 
@@ -14,7 +14,7 @@ Each tracked result stores partition sizes, class counts, per-partition SHA-256 
 
 ## Intended use
 
-The split supports a small comparison between a TF-IDF reference classifier and GPT-2-based classification modes. Macro-F1 is the primary metric because the labels are imbalanced. Accuracy and per-class scores are reported as secondary measures.
+The split supports a small comparison between a TF-IDF reference classifier and classification modes using GPT-2. Macro-F1 is the primary metric because the labels are imbalanced. Accuracy and per-class scores are reported as secondary measures.
 
 ## Limitations
 

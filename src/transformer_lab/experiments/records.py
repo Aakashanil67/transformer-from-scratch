@@ -48,7 +48,6 @@ class ExperimentRecord:
             raise ValueError("failed and unavailable records require metrics = None")
 
     def to_dict(self) -> dict[str, Any]:
-        """Return a stable JSON-compatible mapping."""
         payload = {item.name: _json_value(getattr(self, item.name)) for item in fields(self)}
         return json.loads(
             json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False)

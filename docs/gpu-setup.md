@@ -36,7 +36,7 @@ Start with the supplied LoRA configuration. It uses GPT-2 small, sequence length
 .venv-gpu\Scripts\transformer-lab.exe train-sentiment --config configs\sentiment\lora-gpt2-small.toml --device cuda
 ```
 
-The supplied full-fine-tuning profile fitted this card. The recorded historical matrix peaked at 3.748 GiB allocated on the full-tuning profile; available memory varies with other applications, so close GPU-heavy programmes before reproducing it. If a run fails, retain the failed record rather than changing the comparison in place.
+The supplied profile for full fine-tuning fitted this card. The recorded historical matrix peaked at 3.748 GiB allocated on the full-tuning profile. Available memory varies with other applications, so close GPU-heavy programmes before reproducing it. If a run fails, retain the failed record rather than changing the comparison in place.
 
 To reproduce the historical fixed-profile comparison, use the installed matrix command. It keeps the split seed at 17, varies optimisation seeds 17, 23 and 41, and writes the paired comparison summary:
 
@@ -56,6 +56,15 @@ Run the stages in this order:
 .venv-gpu\Scripts\transformer-lab.exe evaluate-matrix --selection reports\results\v3\selection.json --seeds 17 23 41 --device cuda --output reports\results\v3\comparison.json --resume
 ```
 
-The first and third commands write to their configured result paths and may overwrite only when the supplied evidence is valid and `--resume` or an explicit refresh policy permits it. Do not point them at a different experiment's artefacts. The selection command also writes its output, so use a temporary destination when checking the interface. For a read-only verification of the tracked v3 records, use the replay script described in the final audit notes rather than these writing commands. The checked v3 table is [`../reports/generated-results-v3.md`](../reports/generated-results-v3.md); it is exploratory because the final comparison reuses the inspected test partition.
+These commands write to their configured result paths. Reuse requires valid evidence and `--resume`, or an explicit refresh policy. Keep each experiment's artefacts in its own directory. Use a temporary destination when checking the selection command.
+
+To check the tracked summaries without rerunning training:
+
+```powershell
+.venv\Scripts\python.exe -m pytest -q tests\unit\test_public_results.py -o addopts=""
+.venv\Scripts\python.exe scripts\render_results.py --results reports\results\v3 --output reports\generated-results-v3.md --check
+```
+
+The test recomputes aggregate macro-F1 means and standard deviations from the saved seed records and checks that the saved full-tuning versus LoRA intervals include zero. The table check compares the Markdown with the aggregate and seed records. These checks do not load model checkpoints or recompute predictions. The checked v3 table is [`../reports/generated-results-v3.md`](../reports/generated-results-v3.md). See the [experiment report](../reports/experiment-report.md) for the limits of the reused test partition.
 
 The raw dataset and model checkpoints remain outside Git. Tracked result files contain the revision, split hashes, configuration, elapsed time, memory, metrics, and failure reason where applicable.
